@@ -1,0 +1,506 @@
+{
+  "menu_principal": {
+    "texto": [
+      "👋 ¡Hola! Bienvenido a la familia Oreo. 🌟",
+      "Por favor, elige una de las siguientes opciones:",
+      "1️⃣ Registro (crear una nueva cuenta)",
+      "2️⃣ Inicio (explorar nuestras opciones)",
+      "3️⃣ Salir",
+      "4️⃣ Activar"
+    ],
+    "descripcion": "Menú principal. Aquí puedes elegir entre registrarte, explorar el sistema, salir o activar el bot.",
+    "categoria": "principal",
+    "opciones": {
+      "1": "registro",
+      "2": "inicio",
+      "3": "salir",
+      "4": "activar"
+    }
+  },
+  "registro": {
+    "texto": [
+      "¡Bienvenido al registro! 😊",
+      "Por favor, proporciona tu nombre:"
+    ],
+    "descripcion": "Sección de registro. Completa los datos para crear tu cuenta.",
+    "categoria": "registro",
+    "opciones": {
+      "*": "registro_nombre"
+    }
+  },
+  "registro_nombre": {
+    "texto": [
+      "Gracias, {nombre}. Ahora, por favor proporciona tu correo electrónico:"
+    ],
+    "descripcion": "Paso 1 del registro: Captura del nombre.",
+    "categoria": "registro",
+    "opciones": {
+      "*": "registro_correo"
+    }
+  },
+  "registro_correo": {
+    "texto": [
+      "Perfecto, {correo}. Finalmente, proporciona un nombre de usuario:"
+    ],
+    "descripcion": "Paso 2 del registro: Captura del correo.",
+    "categoria": "registro",
+    "opciones": {
+      "*": "registro_usuario"
+    }
+  },
+  "registro_usuario": {
+    "texto": [
+      "¡Registro completado con éxito! 🎉",
+      "Estos son los datos que registramos:",
+      "- Nombre: {nombre}",
+      "- Correo: {correo}",
+      "- Usuario: {usuario}",
+      "- Teléfono: {telefono}",
+      "Volviendo al menú principal..."
+    ],
+    "descripcion": "Paso final del registro: Confirmar datos.",
+    "categoria": "registro",
+    "opciones": {
+      "*": "menu_principal"
+    }
+  },
+  "inicio": {
+    "texto": [
+      "🔑 Has seleccionado 'Inicio'. Elige una opción para continuar:",
+      "1️⃣ Ver productos - Descubre nuestros productos en venta.",
+      "2️⃣ Pedido - Administra tu pedido.",
+      "3️⃣ Ofertas - Consulta las ofertas de la semana.",
+      "4️⃣ Ayuda - Encuentra asistencia o consulta FAQs.",
+      "5️⃣ Pago - Información y métodos de pago.",
+      "6️⃣ Comunidad - Únete a nuestro grupo y entérate de novedades.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Menú de inicio. Aquí puedes explorar productos, gestionar pedidos, ver ofertas, recibir ayuda, consultar métodos de pago o acceder a la comunidad.",
+    "categoria": "inicio",
+    "opciones": {
+      "1": "catalogo_productos",
+      "2": "pedido",
+      "3": "ofertas_semana",
+      "4": "ayuda",
+      "5": "metodo_pago",
+      "6": "comunidad",
+      "0": "menu_principal",
+      "*": "menu_principal"
+    }
+  },
+  "catalogo_productos": {
+    "texto": [
+      "🛒 Aquí tienes nuestra lista de productos disponibles. Selecciona la categoría que te interese:",
+      "1️⃣ Música",
+      "2️⃣ Entregas personales",
+      "3️⃣ Envíos por paquetería",
+      "4️⃣ Películas",
+      "5️⃣ Videojuegos",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Catálogo de productos. Elige una categoría para ver los servicios o productos que ofrecemos.",
+    "categoria": "productos",
+    "opciones": {
+      "1": "servicios_musica",
+      "2": "entregas_personales",
+      "3": "envios_paqueteria",
+      "4": "peliculas",
+      "5": "videojuegos",
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "entregas_personales": {
+    "texto": [
+      "📦 Entregas personales:",
+      "Servicio de entregas personalizadas a tu ubicación.",
+      "Para continuar, elige volver al menú o regresa al inicio.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Información sobre entregas personales, ideal para recibir productos en tu dirección.",
+    "categoria": "entregas",
+    "opciones": {
+      "0": "catalogo_productos",
+      "*": "menu_principal"
+    }
+  },
+  "envios_paqueteria": {
+    "texto": [
+      "🚚 Envíos por paquetería:",
+      "Servicio de envío a través de paquetería.",
+      "Para continuar, elige volver al menú o regresa al inicio.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Información sobre envíos mediante paquetería para tus compras.",
+    "categoria": "envios",
+    "opciones": {
+      "0": "catalogo_productos",
+      "*": "menu_principal"
+    }
+  },
+  "horarios_atencion": {
+    "texto": [
+      "🕒 Horarios de Atención:",
+      "Lunes a Viernes: 9:00 AM - 6:00 PM 🕘",
+      "Sábados: 10:00 AM - 4:00 PM 🕙",
+      "Domingos: Cerrado. ❌",
+      "Consulta nuestros horarios y planifica tu visita.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Información de horarios de atención para que sepas cuándo puedes contactarnos o visitarnos.",
+    "categoria": "informacion",
+    "opciones": {
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "pedido": {
+    "texto": [
+      "📦 Pedido:",
+      "1️⃣ Agregar productos - Añade productos a tu pedido.",
+      "2️⃣ Quitar productos - Elimina productos de tu pedido.",
+      "3️⃣ Realizar compra - Confirma tu pedido.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Sección de pedidos. Aquí puedes gestionar tu pedido: agregar o quitar productos o confirmar la compra.",
+    "categoria": "pedido",
+    "opciones": {
+      "1": "agregar_productos",
+      "2": "quitar_productos",
+      "3": "realizar_compra",
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "agregar_productos": {
+    "texto": [
+      "🛒 Agregar productos:",
+      "Para agregar productos a tu pedido, escribe el nombre o código del producto.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Proceso para agregar productos a tu carrito de compras.",
+    "categoria": "agregar",
+    "opciones": {
+      "0": "pedido",
+      "*": "menu_principal"
+    }
+  },
+  "quitar_productos": {
+    "texto": [
+      "🛒 Quitar productos:",
+      "Para quitar productos de tu pedido, escribe el nombre o código del producto que deseas eliminar.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Proceso para quitar productos que no deseas en tu pedido.",
+    "categoria": "quitar",
+    "opciones": {
+      "0": "pedido",
+      "*": "menu_principal"
+    }
+  },
+  "realizar_compra": {
+    "texto": [
+      "🛒 Realizar compra:",
+      "Se está procesando tu compra. Por favor, confirma si deseas continuar con la transacción.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Confirmación de compra. Revisa tu pedido antes de confirmar la transacción.",
+    "categoria": "comprar",
+    "opciones": {
+      "0": "pedido",
+      "*": "menu_principal"
+    }
+  },
+  "ofertas_semana": {
+    "texto": [
+      "🎉 Ofertas de la Semana:",
+      "1️⃣ 50% de descuento en películas de Netflix (vigente hasta el viernes).",
+      "2️⃣ Compra 1 y llévate 2 en apps de productividad (aplican restricciones).",
+      "3️⃣ Descuento exclusivo en vuelos nacionales (consulta términos y condiciones).",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Sección de ofertas. Revisa las promociones vigentes y aprovecha los descuentos especiales.",
+    "categoria": "ofertas",
+    "opciones": {
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "ayuda": {
+    "texto": [
+      "📘 Ayuda:",
+      "1️⃣ Iniciar sesión o registro - Accede a tu cuenta.",
+      "2️⃣ Explorar productos - Descubre nuestros productos.",
+      "3️⃣ Horarios - Consulta nuestros horarios de atención.",
+      "4️⃣ Pedido - Verifica y administra tu pedido.",
+      "5️⃣ Buscar mi información - Visualiza y actualiza tus datos personales.",
+      "6️⃣ Chat Humano - Habla con un asesor en tiempo real.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Sección de ayuda. Aquí encontrarás opciones para resolver tus dudas y acceder a soporte.",
+    "categoria": "ayuda",
+    "opciones": {
+      "1": "menu_principal",
+      "2": "catalogo_productos",
+      "3": "horarios_atencion",
+      "4": "pedido",
+      "5": "buscar_informacion",
+      "6": "chat_humano",
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "metodo_pago": {
+    "texto": [
+      "💳 Método de Pago:",
+      "Realiza tu pago mediante transferencia bancaria a la siguiente CLABE interbancaria:",
+      "012345678901234567",
+      "Una vez realizado el pago, envía tu comprobante para confirmar la transacción.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Información de pago. Detalla el método y pasos a seguir para confirmar tu transacción.",
+    "categoria": "pago",
+    "opciones": {
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "comunidad": {
+    "texto": [
+      "👥 Comunidad:",
+      "Únete a nuestro grupo de WhatsApp para recibir ofertas exclusivas y participar en actividades.",
+      "Haz clic en el enlace para unirte: [Unirme a la Comunidad🔗](https://chat.whatsapp.com/invite-link)",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Acceso a la comunidad. Conéctate con otros usuarios y entérate de las últimas novedades.",
+    "categoria": "comunidad",
+    "opciones": {
+      "0": "inicio",
+      "*": "menu_principal"
+    }
+  },
+  "servicios_musica": {
+    "texto": [
+      "🎵 Servicios de música disponibles:",
+      "1️⃣ Spotify",
+      "2️⃣ YouTube Music",
+      "3️⃣ Amazon Music",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Catálogo de servicios de música. Elige la plataforma de streaming de tu preferencia.",
+    "categoria": "musica",
+    "opciones": {
+      "1": "opciones_spotify",
+      "2": "opciones_youtube_music",
+      "3": "opciones_amazon_music",
+      "0": "catalogo_productos",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_spotify": {
+    "texto": [
+      "🎵 Opciones de Spotify:",
+      "1️⃣ 50 MXN - 1 perfil (1 mes)",
+      "2️⃣ 80 MXN - 2 perfiles (1 mes)",
+      "3️⃣ 20 MXN - Perfil adicional",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Opciones de suscripción para Spotify. Consulta los planes disponibles y elige el que más se adapte a ti.",
+    "categoria": "spotify",
+    "opciones": {
+      "0": "servicios_musica",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_youtube_music": {
+    "texto": [
+      "🎵 Opciones de YouTube Music:",
+      "1️⃣ 50 MXN - 1 perfil (1 mes)",
+      "2️⃣ 80 MXN - 2 perfiles (1 mes)",
+      "3️⃣ 20 MXN - Perfil adicional",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Opciones de suscripción para YouTube Music. Elige el plan que se ajuste a tus necesidades.",
+    "categoria": "youtube",
+    "opciones": {
+      "0": "servicios_musica",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_amazon_music": {
+    "texto": [
+      "🎵 Opciones de Amazon Music:",
+      "1️⃣ 50 MXN - 1 perfil (1 mes)",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Plan de suscripción para Amazon Music. Consulta la opción disponible.",
+    "categoria": "amazon",
+    "opciones": {
+      "0": "servicios_musica",
+      "*": "menu_principal"
+    }
+  },
+  "peliculas": {
+    "texto": [
+      "🎬 Plataformas de streaming disponibles:",
+      "1️⃣ Crunchyroll",
+      "2️⃣ Amazon Prime Video",
+      "3️⃣ Netflix",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Elige una plataforma de streaming para ver películas y series.",
+    "categoria": "peliculas",
+    "opciones": {
+      "1": "opciones_crunchyroll",
+      "2": "opciones_amazon_prime_video",
+      "3": "opciones_netflix",
+      "0": "catalogo_productos",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_crunchyroll": {
+    "texto": [
+      "🎬 Opciones de Crunchyroll:",
+      "1️⃣ 85 MXN - Cuenta completa (1 perfil)",
+      "2️⃣ 50 MXN - Cuenta compartida (1 mes)",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Planes disponibles para Crunchyroll. Consulta los precios y el tipo de cuenta.",
+    "categoria": "crunchyroll",
+    "opciones": {
+      "0": "peliculas",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_amazon_prime_video": {
+    "texto": [
+      "🎬 Opciones de Amazon Prime Video:",
+      "1️⃣ 65 MXN - 1 cuenta (1 mes)",
+      "2️⃣ 50 MXN - Cuenta compartida",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Planes de Amazon Prime Video. Elige la opción que prefieras para disfrutar de tus series y películas.",
+    "categoria": "amazon_prime",
+    "opciones": {
+      "0": "peliculas",
+      "*": "menu_principal"
+    }
+  },
+  "opciones_netflix": {
+    "texto": [
+      "🎬 Opciones de Netflix:",
+      "1️⃣ 85 MXN - 1 perfil",
+      "2️⃣ 60 MXN - Cuenta adicional",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Planes de suscripción para Netflix. Revisa las opciones disponibles.",
+    "categoria": "netflix",
+    "opciones": {
+      "0": "peliculas",
+      "*": "menu_principal"
+    }
+  },
+  "videojuegos": {
+    "texto": [
+      "🎮 Videojuegos disponibles:",
+      "1️⃣ Game Pass",
+      "2️⃣ Monedas de juegos",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Explora las opciones en videojuegos, desde servicios de suscripción hasta moneda virtual.",
+    "categoria": "videojuegos",
+    "opciones": {
+      "0": "catalogo_productos",
+      "*": "menu_principal"
+    }
+  },
+  "buscar_informacion": {
+    "texto": [
+      "🔍 Buscar mi información:",
+      "1️⃣ Consultar datos personales",
+      "2️⃣ Actualizar información",
+      "0️⃣ Volver al menú anterior"
+    ],
+    "descripcion": "Consulta o actualiza tu información personal en esta sección.",
+    "categoria": "informacion",
+    "opciones": {
+      "0": "ayuda",
+      "*": "menu_principal"
+    }
+  },
+  "carrito": {
+    "texto": [
+      "🛒 Carrito:",
+      "Revisa los productos que has seleccionado para tu compra.",
+      "Podrás agregar o quitar productos desde aquí.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Sección del carrito de compras. Administra los productos que deseas adquirir.",
+    "categoria": "carrito",
+    "opciones": {
+      "0": "ayuda",
+      "*": "menu_principal"
+    }
+  },
+  "chat_humano": {
+    "texto": [
+      "💬 **¡Hola! Estoy aquí para ayudarte.**",
+      "Si necesitas asistencia adicional, no dudes en contactar a uno de nuestros asesores.",
+      "Solo haz clic en el siguiente enlace y tu mensaje se enviará automáticamente:",
+      "[Conectar con un asesor](https://wa.me/5663823842?text=Hola,%20vengo%20por%20parte%20del%20Bot%20Oreo.%20Quiero%20realizar%20una%20compra).",
+      "🤝 Estamos aquí para ayudarte en todo lo que necesites.",
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
+    ],
+    "descripcion": "Chat con Humano - Asistencia en vivo.",
+    "categoria": "ayuda",
+    "opciones": {
+      "0": "ayuda",
+      "*": "menu_principal"
+    }
+  },
+  "salir": {
+    "texto": [
+      "🚪 Has seleccionado 'Salir'.",
+      "Para volver a hablar conmigo, responde con 'Activar'. ¡Te esperamos!"
+    ],
+    "descripcion": "Opción de salida. Informa al usuario cómo reactivar la conversación.",
+    "categoria": "salir",
+    "opciones": {}
+  },
+  "activar": {
+    "texto": [
+      "✅✨ Has seleccionado 'Activar'.",
+      "🤖💬 El bot ha sido activado. ¿En qué puedo ayudarte ahora?"
+    ],
+    "descripcion": "Opción de activación. El bot responde a tus comandos.",
+    "categoria": "activar",
+    "opciones": {
+      "0": "menu_principal",
+      "*": "menu_principal"
+    }
+  }
+}
