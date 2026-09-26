@@ -1,0 +1,14 @@
+{
+  "name": "bolsillo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bolsillo — app personal de finanzas y bóveda de enlaces/imágenes (PWA local, sin backend).",
+  "scripts": {
+    "serve": "http-server . -p 8080 -c-1",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "http-server": "^14.1.1"
+  }
+}
