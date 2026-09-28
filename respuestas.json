@@ -6,15 +6,17 @@
       "1️⃣ Registro (crear una nueva cuenta)",
       "2️⃣ Inicio (explorar nuestras opciones)",
       "3️⃣ Salir",
-      "4️⃣ Activar"
+      "4️⃣ Activar",
+      "5️⃣ Ya tengo cuenta"
     ],
-    "descripcion": "Menú principal. Aquí puedes elegir entre registrarte, explorar el sistema, salir o activar el bot.",
+    "descripcion": "Menú principal. Aquí puedes elegir entre registrarte, explorar el sistema, salir, activar el bot o identificarte si ya tienes cuenta.",
     "categoria": "principal",
     "opciones": {
       "1": "registro",
       "2": "inicio",
       "3": "salir",
-      "4": "activar"
+      "4": "activar",
+      "5": "identificarme"
     }
   },
   "registro": {
@@ -176,47 +178,19 @@
   "pedido": {
     "texto": [
       "📦 Pedido:",
-      "1️⃣ Agregar productos - Añade productos a tu pedido.",
-      "2️⃣ Quitar productos - Elimina productos de tu pedido.",
-      "3️⃣ Realizar compra - Confirma tu pedido.",
+      "1️⃣ Ver catálogo - Agrega productos a tu carrito.",
+      "2️⃣ Mi carrito - Ve o quita productos de tu carrito.",
+      "3️⃣ Confirmar compra - Cierra tu pedido.",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
     "descripcion": "Sección de pedidos. Aquí puedes gestionar tu pedido: agregar o quitar productos o confirmar la compra.",
     "categoria": "pedido",
     "opciones": {
-      "1": "agregar_productos",
-      "2": "quitar_productos",
+      "1": "catalogo_productos",
+      "2": "carrito",
       "3": "realizar_compra",
       "0": "inicio",
-      "*": "menu_principal"
-    }
-  },
-  "agregar_productos": {
-    "texto": [
-      "🛒 Agregar productos:",
-      "Para agregar productos a tu pedido, escribe el nombre o código del producto.",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Proceso para agregar productos a tu carrito de compras.",
-    "categoria": "agregar",
-    "opciones": {
-      "0": "pedido",
-      "*": "menu_principal"
-    }
-  },
-  "quitar_productos": {
-    "texto": [
-      "🛒 Quitar productos:",
-      "Para quitar productos de tu pedido, escribe el nombre o código del producto que deseas eliminar.",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Proceso para quitar productos que no deseas en tu pedido.",
-    "categoria": "quitar",
-    "opciones": {
-      "0": "pedido",
       "*": "menu_principal"
     }
   },
@@ -265,7 +239,7 @@
     "descripcion": "Sección de ayuda. Aquí encontrarás opciones para resolver tus dudas y acceder a soporte.",
     "categoria": "ayuda",
     "opciones": {
-      "1": "menu_principal",
+      "1": "identificarme",
       "2": "catalogo_productos",
       "3": "horarios_atencion",
       "4": "pedido",
@@ -460,6 +434,7 @@
     "descripcion": "Consulta o actualiza tu información personal en esta sección.",
     "categoria": "informacion",
     "opciones": {
+      "1": "mi_cuenta",
       "0": "ayuda",
       "*": "menu_principal"
     }

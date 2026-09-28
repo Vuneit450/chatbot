@@ -4,6 +4,27 @@ async function clickOption(page, label) {
   await page.getByRole('button', { name: label, exact: true }).click();
 }
 
+async function send(page, text) {
+  await page.fill('#messageInput', text);
+  await page.locator('.send-btn').click();
+}
+
+function uniquePhone() {
+  // Único por ejecución (no solo por test) para que reintentos y corridas
+  // repetidas de la suite nunca choquen con un cliente/carrito que quedó
+  // de una corrida anterior en la base de datos local persistente.
+  return `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
+async function registrarCliente(page, { nombre = 'Jonathan', correo = 'jonathan@binatsa.mx', usuario = 'jonab', telefono = uniquePhone() } = {}) {
+  await clickOption(page, '1️⃣');
+  await send(page, nombre);
+  await send(page, correo);
+  await send(page, usuario);
+  await send(page, telefono);
+  return telefono;
+}
+
 test.describe('Bot Oreo', () => {
   test('carga el menú principal sin errores de consola', async ({ page }) => {
     const errors = [];
@@ -11,7 +32,7 @@ test.describe('Bot Oreo', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     await page.goto('/');
     await expect(page.locator('.msg.bot').first()).toContainText('Bienvenido a la familia Oreo');
-    await expect(page.locator('.chip')).toHaveCount(4);
+    await expect(page.locator('.chip')).toHaveCount(5);
     expect(errors).toEqual([]);
   });
 
@@ -104,5 +125,90 @@ test.describe('Bot Oreo', () => {
     const before = await page.locator('.msg').count();
     await page.locator('.send-btn').click();
     await expect(page.locator('.msg')).toHaveCount(before);
+  });
+
+  test('tras registrarse, el menú principal saluda por nombre y ya no ofrece "Registro"', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Ana' });
+    await send(page, '*'); // volver al menú principal
+    const last = page.locator('.msg.bot').last();
+    await expect(last).toContainText('¡Qué bueno verte de nuevo, Ana!');
+    await expect(last).toContainText('Mi carrito');
+    await expect(last).not.toContainText('Registro');
+  });
+
+  test('flujo de compra completo: catálogo → carrito → checkout → sugerencia → historial', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Dana' });
+    await send(page, '*');
+    await clickOption(page, '1️⃣'); // catálogo
+    await clickOption(page, '1️⃣'); // música
+    await clickOption(page, '1️⃣'); // Spotify
+    const planes = page.locator('.msg.bot').last();
+    await expect(planes).toContainText('MXN');
+    await clickOption(page, '1️⃣'); // agrega el primer plan
+    await expect(page.locator('.msg.bot').last()).toContainText('Agregado a tu carrito');
+
+    await clickOption(page, '2️⃣'); // ver carrito
+    const carrito = page.locator('.msg.bot').last();
+    await expect(carrito).toContainText('Spotify');
+    await expect(carrito).toContainText('Total: $');
+
+    await send(page, 'comprar');
+    await expect(page.locator('.msg.bot').last()).toContainText('Vas a confirmar este pedido');
+    await clickOption(page, '1️⃣'); // confirmar compra
+    const confirmado = page.locator('.msg.bot').last();
+    await expect(confirmado).toContainText('confirmado');
+    await expect(confirmado).toContainText('Total: $');
+
+    // La sugerencia post-compra es opcional (solo si hay otra categoría sin
+    // comprar), pero con un cliente nuevo siempre debería aparecer.
+    await expect(confirmado).toContainText('qué tal');
+
+    await clickOption(page, '0️⃣'); // no gracias, volver al menú
+    await clickOption(page, '3️⃣'); // mi cuenta e historial
+    const cuenta = page.locator('.msg.bot').last();
+    await expect(cuenta).toContainText('Dana');
+    await expect(cuenta).toContainText('Tus últimos pedidos');
+  });
+
+  test('el carrito recuerda al cliente entre dispositivos al identificarse por teléfono', async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    await pageA.goto('/');
+    const telefono = await registrarCliente(pageA, { nombre: 'Erik' });
+    await send(pageA, '*');
+    await clickOption(pageA, '1️⃣'); // catálogo
+    await clickOption(pageA, '1️⃣'); // música
+    await clickOption(pageA, '2️⃣'); // YouTube Music
+    await clickOption(pageA, '1️⃣'); // agregar primer plan
+    await expect(pageA.locator('.msg.bot').last()).toContainText('Agregado a tu carrito');
+    await ctxA.close();
+
+    // "Otro dispositivo": contexto y cookies completamente nuevos.
+    const ctxB = await browser.newContext();
+    const pageB = await ctxB.newPage();
+    await pageB.goto('/');
+    await clickOption(pageB, '5️⃣'); // ya tengo cuenta
+    await send(pageB, telefono);
+    const menu = pageB.locator('.msg.bot').last();
+    await expect(menu).toContainText('Erik');
+    await expect(menu).toContainText('Mi carrito (1)');
+    await ctxB.close();
+  });
+
+  test('sin identificarse, el carrito pide registrarte o identificarte en vez de tronar', async ({ page }) => {
+    await page.goto('/');
+    await clickOption(page, '2️⃣'); // Inicio
+    await clickOption(page, '2️⃣'); // Pedido
+    await clickOption(page, '2️⃣'); // Mi carrito
+    await expect(page.locator('.msg.bot').last()).toContainText('primero necesito identificarte');
+  });
+
+  test('un teléfono que no existe ofrece registrarte en vez de dejarte varado', async ({ page }) => {
+    await page.goto('/');
+    await clickOption(page, '5️⃣'); // ya tengo cuenta
+    await send(page, '0000000000000');
+    await expect(page.locator('.msg.bot').last()).toContainText('No encontramos ninguna cuenta');
   });
 });
