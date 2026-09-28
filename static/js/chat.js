@@ -78,6 +78,19 @@
     });
   }
 
+  const REQUEST_TIMEOUT_MS = 20000;
+
+  async function fetchJSON(url, options) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   function setBusy(state) {
     busy = state;
     sendBtn.disabled = state;
@@ -102,12 +115,11 @@
     setBusy(true);
     showTyping();
     try {
-      const res = await fetch('/api/message', {
+      const payload = await fetchJSON('/api/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: value }),
       });
-      const payload = await res.json();
       hideTyping();
       applyBotPayload(payload, transcript);
     } catch (err) {
@@ -132,9 +144,10 @@
     quickRepliesEl.innerHTML = '';
     setBusy(true);
     try {
-      const res = await fetch('/api/start', { method: 'POST' });
-      const payload = await res.json();
+      const payload = await fetchJSON('/api/start', { method: 'POST' });
       applyBotPayload(payload, []);
+    } catch (err) {
+      appendBubble('bot', ['⚠️ No pude conectar con el servidor. Intenta de nuevo.']);
     } finally {
       setBusy(false);
     }
@@ -152,9 +165,10 @@
     }
     setBusy(true);
     try {
-      const res = await fetch('/api/state');
-      const payload = await res.json();
+      const payload = await fetchJSON('/api/state');
       applyBotPayload(payload, []);
+    } catch (err) {
+      appendBubble('bot', ['⚠️ No pude conectar con el servidor. Intenta de nuevo.']);
     } finally {
       setBusy(false);
     }

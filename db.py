@@ -197,19 +197,6 @@ def productos_por_servicio(servicio):
         conn.close()
 
 
-def producto_por_id(producto_id):
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, categoria, servicio, plan, precio_mxn FROM productos WHERE id = ?",
-            (producto_id,),
-        )
-        return _row_to_producto(cur.fetchone())
-    finally:
-        conn.close()
-
-
 def _row_to_producto(row):
     if not row:
         return None

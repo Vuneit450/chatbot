@@ -19,23 +19,6 @@ CATEGORY_NODES = {
     "opciones_netflix": "Netflix",
 }
 
-DYNAMIC_NODE_IDS = {
-    "menu_principal",
-    "carrito",
-    "quitar_productos",
-    "realizar_compra",
-    "identificarme",
-    "identificarme_no_encontrado",
-    "mi_cuenta",
-    "producto_agregado",
-    "pedido_confirmado",
-    *CATEGORY_NODES,
-}
-
-
-def is_dynamic(node_id):
-    return node_id in DYNAMIC_NODE_IDS
-
 
 def _payload(node_id, lines, options, free_text=False):
     return {"node": node_id, "lines": lines, "options": options, "freeText": free_text}
@@ -52,15 +35,21 @@ def _necesita_cuenta(node_id):
 # ---- render ---------------------------------------------------------------
 
 def render(node_id, ctx):
-    cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
-
+    # Solo se pide el cliente a la base de datos cuando el nodo en
+    # cuestión de verdad lo necesita: la mayoría de los nodos (todo el
+    # contenido informativo de respuestas.json, el catálogo, identificarme)
+    # no dependen de quién eres, y consultarlo de todos modos en cada
+    # mensaje multiplicaba las llamadas a Turso sin necesidad.
     if node_id == "menu_principal":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_menu_principal(cliente) if cliente else None
     if node_id in CATEGORY_NODES:
         return _render_categoria(node_id, CATEGORY_NODES[node_id])
     if node_id in ("carrito", "quitar_productos"):
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_carrito(node_id, cliente)
     if node_id == "realizar_compra":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_realizar_compra(cliente)
     if node_id == "identificarme":
         return _payload(node_id, ["Escribe el teléfono con el que te registraste:"], [], free_text=True)
@@ -71,10 +60,12 @@ def render(node_id, ctx):
             numbered_options(2, extra=["0"]),
         )
     if node_id == "mi_cuenta":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_mi_cuenta(cliente)
     if node_id == "producto_agregado":
         return _render_producto_agregado(ctx.get("data", {}))
     if node_id == "pedido_confirmado":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_pedido_confirmado(cliente, ctx.get("data", {}))
     return None
 
