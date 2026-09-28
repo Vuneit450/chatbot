@@ -7,6 +7,7 @@ depender solo de la cookie de sesión.
 """
 
 import os
+import time
 from pathlib import Path
 
 import libsql
@@ -81,9 +82,19 @@ CATALOGO_SEED = [
 
 
 def get_connection():
-    if TURSO_URL:
-        return libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
-    return libsql.connect(LOCAL_DB_PATH)
+    if not TURSO_URL:
+        return libsql.connect(LOCAL_DB_PATH)
+    # Turso puede tardar en la primera conexión tras estar inactivo; un
+    # solo reintento evita que un bache pasajero tumbe la petición.
+    last_error = None
+    for attempt in range(2):
+        try:
+            return libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
+        except Exception as exc:
+            last_error = exc
+            if attempt == 0:
+                time.sleep(1)
+    raise last_error
 
 
 def init_db():
