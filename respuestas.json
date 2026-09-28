@@ -24,6 +24,7 @@
     ],
     "descripcion": "Sección de registro. Completa los datos para crear tu cuenta.",
     "categoria": "registro",
+    "captura": "nombre",
     "opciones": {
       "*": "registro_nombre"
     }
@@ -34,21 +35,34 @@
     ],
     "descripcion": "Paso 1 del registro: Captura del nombre.",
     "categoria": "registro",
+    "captura": "correo",
     "opciones": {
       "*": "registro_correo"
     }
   },
   "registro_correo": {
     "texto": [
-      "Perfecto, {correo}. Finalmente, proporciona un nombre de usuario:"
+      "Perfecto, {correo}. Ahora, proporciona un nombre de usuario:"
     ],
     "descripcion": "Paso 2 del registro: Captura del correo.",
     "categoria": "registro",
+    "captura": "usuario",
     "opciones": {
       "*": "registro_usuario"
     }
   },
   "registro_usuario": {
+    "texto": [
+      "Genial, {usuario}. Por último, proporciona tu teléfono a 10 dígitos:"
+    ],
+    "descripcion": "Paso 3 del registro: Captura del usuario.",
+    "categoria": "registro",
+    "captura": "telefono",
+    "opciones": {
+      "*": "registro_confirmacion"
+    }
+  },
+  "registro_confirmacion": {
     "texto": [
       "¡Registro completado con éxito! 🎉",
       "Estos son los datos que registramos:",

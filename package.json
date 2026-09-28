@@ -1,0 +1,12 @@
+{
+  "name": "bot-oreo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot Oreo — interfaz de chat para el asistente de suscripciones (Flask + JS vanilla).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}

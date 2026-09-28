@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bot Oreo</title>
+  <meta name="theme-color" content="#3B2A20">
+  <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="cookie" aria-hidden="true">🍪</span>
+        <div class="brand-text">
+          <h1>Bot Oreo</h1>
+          <p>Suscripciones y soporte</p>
+        </div>
+      </div>
+      <button type="button" class="icon-btn" id="restartBtn" title="Reiniciar conversación" aria-label="Reiniciar conversación">↺</button>
+    </header>
+
+    <main class="chat" id="chat" role="log" aria-live="polite"></main>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <div class="quick-replies" id="quickReplies" aria-label="Respuestas rápidas"></div>
+      <div class="input-row">
+        <input type="text" id="messageInput" placeholder="Escribe un mensaje o un número…" aria-label="Mensaje" maxlength="200">
+        <button type="submit" class="send-btn" aria-label="Enviar">➤</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>
