@@ -78,7 +78,12 @@
     });
   }
 
-  const REQUEST_TIMEOUT_MS = 20000;
+  // El servidor tiene hasta 120s de margen (gunicorn --timeout 120) para
+  // absorber un arranque en frío de la base de datos; si el navegador
+  // corta antes que eso, el usuario ve "falló" aunque el servidor seguía
+  // trabajando. Se deja bastante margen, no igualado a 120s, para que la
+  // UI no se sienta colgada para siempre si de verdad hay un problema.
+  const REQUEST_TIMEOUT_MS = 60000;
 
   async function fetchJSON(url, options) {
     const controller = new AbortController();
