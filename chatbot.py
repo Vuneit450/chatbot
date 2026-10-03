@@ -49,14 +49,21 @@ def node_payload(node_id, ctx):
     data = ctx.get("data", {})
     node = NODES.get(node_id) or NODES[START_NODE]
     opciones = node.get("opciones", {})
+    iconos = node.get("iconos", {})
     is_capture = bool(node.get("captura"))
-    options = [
-        {"value": key, "label": EMOJI_DIGITS.get(key, key)}
-        for key in opciones
+    options = []
+    for key in opciones:
         # El comodín "*" solo se muestra como botón cuando de verdad
         # representa "volver al menú" y no un campo de texto libre.
-        if key != "*" or not is_capture
-    ]
+        if key == "*" and is_capture:
+            continue
+        tile = iconos.get(key)
+        if tile:
+            # Nodo de catálogo visual: imagen + título en vez del chip
+            # numerado de siempre (ver iconos en respuestas.json).
+            options.append({"value": key, "label": tile["titulo"], "icon": tile["icon"]})
+        else:
+            options.append({"value": key, "label": EMOJI_DIGITS.get(key, key)})
     return {
         "node": node_id,
         "lines": format_lines(node["texto"], data),

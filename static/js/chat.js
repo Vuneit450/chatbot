@@ -69,6 +69,25 @@
   function renderQuickReplies(options) {
     quickRepliesEl.innerHTML = '';
     options.forEach((opt) => {
+      if (opt.icon) {
+        // Catálogo visual: imagen (por ahora un ícono de relleno) + título
+        // chico, para no obligar al usuario a leer una lista numerada.
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'tile';
+        const img = document.createElement('img');
+        img.className = 'tile-icon';
+        img.src = `/static/icons/catalog/${opt.icon}.svg`;
+        img.alt = '';
+        const label = document.createElement('span');
+        label.className = 'tile-label';
+        label.textContent = opt.label;
+        tile.appendChild(img);
+        tile.appendChild(label);
+        tile.addEventListener('click', () => sendMessage(opt.value, opt.label));
+        quickRepliesEl.appendChild(tile);
+        return;
+      }
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'chip' + (opt.value === '*' ? ' primary' : '');

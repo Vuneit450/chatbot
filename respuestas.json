@@ -126,6 +126,13 @@
       "5": "videojuegos",
       "0": "inicio",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "musica", "titulo": "Música"},
+      "2": {"icon": "entregas", "titulo": "Entregas personales"},
+      "3": {"icon": "envios", "titulo": "Envíos por paquetería"},
+      "4": {"icon": "peliculas", "titulo": "Películas"},
+      "5": {"icon": "videojuegos", "titulo": "Videojuegos"}
     }
   },
   "entregas_personales": {
@@ -297,6 +304,11 @@
       "3": "opciones_amazon_music",
       "0": "catalogo_productos",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "spotify", "titulo": "Spotify"},
+      "2": {"icon": "youtube_music", "titulo": "YouTube Music"},
+      "3": {"icon": "amazon_music", "titulo": "Amazon Music"}
     }
   },
   "opciones_spotify": {
@@ -362,6 +374,11 @@
       "3": "opciones_netflix",
       "0": "catalogo_productos",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "crunchyroll", "titulo": "Crunchyroll"},
+      "2": {"icon": "amazon_prime_video", "titulo": "Amazon Prime Video"},
+      "3": {"icon": "netflix", "titulo": "Netflix"}
     }
   },
   "opciones_crunchyroll": {

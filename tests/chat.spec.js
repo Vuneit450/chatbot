@@ -137,13 +137,43 @@ test.describe('Bot Oreo', () => {
     await expect(last).not.toContainText('Registro');
   });
 
+  test('el catálogo muestra tarjetas visuales (imagen + título) en vez de solo números', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Vale' });
+    await send(page, '*');
+    await clickOption(page, '1️⃣'); // catálogo
+
+    const categorias = page.locator('.tile');
+    await expect(categorias).toHaveCount(5);
+    await expect(categorias.nth(0)).toContainText('Música');
+    await expect(categorias.nth(0).locator('img')).toHaveAttribute('src', '/static/icons/catalog/musica.svg');
+    await expect(categorias.nth(3)).toContainText('Películas');
+    // Los botones de navegación (0️⃣/*️⃣) siguen siendo chips normales, no tarjetas.
+    await expect(page.locator('.chip')).toHaveCount(2);
+
+    await clickOption(page, 'Música');
+    const plataformasMusica = page.locator('.tile');
+    await expect(plataformasMusica).toHaveCount(3);
+    await expect(plataformasMusica.nth(0)).toContainText('Spotify');
+    await expect(plataformasMusica.nth(1)).toContainText('YouTube Music');
+    await expect(plataformasMusica.nth(2)).toContainText('Amazon Music');
+
+    await clickOption(page, '0️⃣'); // volver a catálogo
+    await clickOption(page, 'Películas');
+    const plataformasPeliculas = page.locator('.tile');
+    await expect(plataformasPeliculas).toHaveCount(3);
+    await expect(plataformasPeliculas.nth(0)).toContainText('Crunchyroll');
+    await expect(plataformasPeliculas.nth(1)).toContainText('Amazon Prime Video');
+    await expect(plataformasPeliculas.nth(2)).toContainText('Netflix');
+  });
+
   test('flujo de compra completo: catálogo → carrito → checkout → sugerencia → historial', async ({ page }) => {
     await page.goto('/');
     await registrarCliente(page, { nombre: 'Dana' });
     await send(page, '*');
     await clickOption(page, '1️⃣'); // catálogo
-    await clickOption(page, '1️⃣'); // música
-    await clickOption(page, '1️⃣'); // Spotify
+    await clickOption(page, 'Música'); // tarjeta visual
+    await clickOption(page, 'Spotify'); // tarjeta visual
     const planes = page.locator('.msg.bot').last();
     await expect(planes).toContainText('MXN');
     await clickOption(page, '1️⃣'); // agrega el primer plan
@@ -177,8 +207,8 @@ test.describe('Bot Oreo', () => {
     await registrarCliente(page, { nombre: 'Rita' });
     await send(page, '*');
     await clickOption(page, '1️⃣'); // catálogo
-    await clickOption(page, '1️⃣'); // música
-    await clickOption(page, '3️⃣'); // Amazon Music (un solo plan)
+    await clickOption(page, 'Música'); // tarjeta visual
+    await clickOption(page, 'Amazon Music'); // tarjeta visual (un solo plan)
     await clickOption(page, '1️⃣'); // agregar
     await clickOption(page, '2️⃣'); // ver carrito
     await send(page, 'comprar');
@@ -205,8 +235,8 @@ test.describe('Bot Oreo', () => {
     const telefono = await registrarCliente(pageA, { nombre: 'Erik' });
     await send(pageA, '*');
     await clickOption(pageA, '1️⃣'); // catálogo
-    await clickOption(pageA, '1️⃣'); // música
-    await clickOption(pageA, '2️⃣'); // YouTube Music
+    await clickOption(pageA, 'Música'); // tarjeta visual
+    await clickOption(pageA, 'YouTube Music'); // tarjeta visual
     await clickOption(pageA, '1️⃣'); // agregar primer plan
     await expect(pageA.locator('.msg.bot').last()).toContainText('Agregado a tu carrito');
     await ctxA.close();
