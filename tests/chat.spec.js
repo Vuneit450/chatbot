@@ -10,10 +10,13 @@ async function send(page, text) {
 }
 
 function uniquePhone() {
-  // Único por ejecución (no solo por test) para que reintentos y corridas
-  // repetidas de la suite nunca choquen con un cliente/carrito que quedó
-  // de una corrida anterior en la base de datos local persistente.
-  return `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  // Exactamente 10 dígitos (el registro ahora valida el formato), pero
+  // igual único por ejecución para que reintentos y corridas repetidas de
+  // la suite nunca choquen con un cliente/carrito que quedó de una corrida
+  // anterior en la base de datos local persistente.
+  const ts = Date.now().toString().slice(-7);
+  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `${ts}${rand}`;
 }
 
 async function registrarCliente(page, { nombre = 'Jonathan', correo = 'jonathan@binatsa.mx', usuario = 'jonab', telefono = uniquePhone() } = {}) {
@@ -64,6 +67,25 @@ test.describe('Bot Oreo', () => {
     // Bug original: {telefono} nunca se llenaba porque no existía paso de
     // captura; si reaparece, el texto crudo del placeholder queda visible.
     await expect(last).not.toContainText('{telefono}');
+  });
+
+  test('un teléfono inválido en el registro se rechaza y no pisa la cuenta de otro cliente', async ({ page }) => {
+    await page.goto('/');
+    await clickOption(page, '1️⃣');
+    await send(page, 'Bruno');
+    await send(page, 'bruno@test.com');
+    await send(page, 'brunob');
+
+    await send(page, '123'); // muy corto: no son 10 dígitos
+    await expect(page.locator('.msg.bot').last()).toContainText('no parece válido');
+    await expect(page.locator('.msg.bot').last()).toContainText('teléfono'); // se queda pidiéndolo, no avanza
+
+    // Con guiones/espacios sí debe aceptarlo, limpiando el formato.
+    const telefono = uniquePhone();
+    const formateado = `${telefono.slice(0, 3)}-${telefono.slice(3, 6)}-${telefono.slice(6)}`;
+    await send(page, formateado);
+    const confirmacion = page.locator('.msg.bot').last();
+    await expect(confirmacion).toContainText(`Teléfono: ${telefono}`);
   });
 
   test('salir es un callejón sin salida hasta escribir "Activar"', async ({ page }) => {

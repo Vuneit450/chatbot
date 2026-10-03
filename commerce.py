@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 
 import db
-from formatting import EMOJI_DIGITS, money, numbered_options
+from formatting import EMOJI_DIGITS, clean_phone, money, numbered_options
 
 BOLSILLO_SYNC_URL = os.environ.get("BOLSILLO_SYNC_URL")
 BOLSILLO_SYNC_KEY = os.environ.get("BOLSILLO_SYNC_KEY")
@@ -53,7 +53,7 @@ def render(node_id, ctx):
         return _render_menu_principal(cliente) if cliente else None
     if node_id in CATEGORY_NODES:
         return _render_categoria(node_id, CATEGORY_NODES[node_id])
-    if node_id in ("carrito", "quitar_productos"):
+    if node_id == "carrito":
         cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_carrito(node_id, cliente)
     if node_id == "realizar_compra":
@@ -196,7 +196,7 @@ def advance(node_id, message, ctx):
         return _advance_menu_principal(message)
     if node_id in CATEGORY_NODES:
         return _advance_categoria(node_id, CATEGORY_NODES[node_id], message, cliente_id)
-    if node_id in ("carrito", "quitar_productos"):
+    if node_id == "carrito":
         return _advance_carrito(message, cliente_id)
     if node_id == "realizar_compra":
         return _advance_realizar_compra(message, cliente_id)
@@ -284,7 +284,7 @@ def _advance_realizar_compra(message, cliente_id):
 
 
 def _advance_identificarme(message):
-    cliente = db.find_cliente_by_telefono(message.strip())
+    cliente = db.find_cliente_by_telefono(clean_phone(message))
     if cliente:
         return "menu_principal", {"cliente_id": cliente["id"]}
     return "identificarme_no_encontrado", {}

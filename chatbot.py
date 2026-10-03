@@ -8,7 +8,7 @@ from flask import Flask, abort, jsonify, render_template, request, session
 
 import commerce
 import db
-from formatting import EMOJI_DIGITS
+from formatting import EMOJI_DIGITS, clean_phone
 
 BASE_DIR = Path(__file__).resolve().parent
 START_NODE = "menu_principal"
@@ -64,9 +64,12 @@ def node_payload(node_id, ctx):
             options.append({"value": key, "label": tile["titulo"], "icon": tile["icon"]})
         else:
             options.append({"value": key, "label": EMOJI_DIGITS.get(key, key)})
+    lines = format_lines(node["texto"], data)
+    if node_id == "registro_usuario" and data.get("_telefono_invalido"):
+        lines = ["⚠️ Ese número no parece válido. Escribe solo tus 10 dígitos, sin espacios ni guiones."] + lines
     return {
         "node": node_id,
-        "lines": format_lines(node["texto"], data),
+        "lines": lines,
         "options": options,
         "freeText": is_capture,
     }
@@ -95,7 +98,16 @@ def advance(current_node, raw_message, ctx):
         return options[message], {}
 
     if "*" in options:
-        captured = {capture_key: message[:MAX_INPUT_LEN]} if capture_key else {}
+        if capture_key == "telefono":
+            # El teléfono es la llave única de cada cliente (ver
+            # db.upsert_cliente): sin validar formato, un typo cualquiera
+            # podría chocar con el de otra persona y pisar su perfil.
+            telefono = clean_phone(message)
+            if len(telefono) != 10:
+                return current_node, {"data": {"_telefono_invalido": True}}
+            captured = {"telefono": telefono, "_telefono_invalido": False}
+        else:
+            captured = {capture_key: message[:MAX_INPUT_LEN]} if capture_key else {}
         next_node = options["*"]
         if next_node == "registro_confirmacion":
             # Último paso del registro: ya tenemos los 4 campos, se crea
