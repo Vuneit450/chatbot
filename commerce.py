@@ -7,8 +7,16 @@ respuestas.json; este módulo se consulta primero para cada nodo, y solo
 cuando no aplica (regresa None) se usa el árbol estático como respaldo.
 """
 
+import json
+import os
+import urllib.error
+import urllib.request
+
 import db
 from formatting import EMOJI_DIGITS, money, numbered_options
+
+BOLSILLO_SYNC_URL = os.environ.get("BOLSILLO_SYNC_URL")
+BOLSILLO_SYNC_KEY = os.environ.get("BOLSILLO_SYNC_KEY")
 
 CATEGORY_NODES = {
     "opciones_spotify": "Spotify",
@@ -237,6 +245,29 @@ def _advance_carrito(message, cliente_id):
     return "carrito", {}
 
 
+def _notificar_bolsillo(pedido, cliente):
+    if not (BOLSILLO_SYNC_URL and BOLSILLO_SYNC_KEY):
+        return
+    nombre = cliente["nombre"] if cliente else "cliente"
+    body = json.dumps(
+        {
+            "amount": pedido.get("total_mxn", 0),
+            "note": f"Venta Bot Oreo · pedido #{pedido.get('pedido_id', '?')} · {nombre}",
+            "source": "bot-oreo",
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        BOLSILLO_SYNC_URL,
+        data=body,
+        method="POST",
+        headers={"content-type": "application/json", "x-sync-key": BOLSILLO_SYNC_KEY},
+    )
+    try:
+        urllib.request.urlopen(request, timeout=5)
+    except (urllib.error.URLError, TimeoutError):
+        pass  # Bolsillo no disponible: el pedido ya se confirmó, esto no debe tronar el checkout.
+
+
 def _advance_realizar_compra(message, cliente_id):
     if not cliente_id:
         mapping = {"1": "registro", "2": "identificarme"}
@@ -244,6 +275,7 @@ def _advance_realizar_compra(message, cliente_id):
     if message == "1":
         pedido = db.confirmar_pedido(cliente_id)
         if pedido:
+            _notificar_bolsillo(pedido, db.find_cliente_by_id(cliente_id))
             return "pedido_confirmado", {"data": {"_ultimo_pedido": pedido}}
         return "catalogo_productos", {}
     if message == "0":
