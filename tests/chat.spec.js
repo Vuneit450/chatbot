@@ -172,6 +172,32 @@ test.describe('Bot Oreo', () => {
     await expect(cuenta).toContainText('Tus últimos pedidos');
   });
 
+  test('al confirmar un pedido aparece un link de recibo real y funcional', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Rita' });
+    await send(page, '*');
+    await clickOption(page, '1️⃣'); // catálogo
+    await clickOption(page, '1️⃣'); // música
+    await clickOption(page, '3️⃣'); // Amazon Music (un solo plan)
+    await clickOption(page, '1️⃣'); // agregar
+    await clickOption(page, '2️⃣'); // ver carrito
+    await send(page, 'comprar');
+    await clickOption(page, '1️⃣'); // confirmar compra
+
+    const confirmado = page.locator('.msg.bot').last();
+    const link = confirmado.locator('a[href^="/recibo/"]');
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute('target', '_blank');
+    const href = await link.getAttribute('href');
+
+    const receiptPage = await page.context().newPage();
+    const res = await receiptPage.goto(href);
+    expect(res.status()).toBe(200);
+    await expect(receiptPage.locator('body')).toContainText('Rita');
+    await expect(receiptPage.locator('body')).toContainText('Amazon Music');
+    await expect(receiptPage.locator('body')).toContainText('Total');
+  });
+
   test('el carrito recuerda al cliente entre dispositivos al identificarse por teléfono', async ({ browser }) => {
     const ctxA = await browser.newContext();
     const pageA = await ctxA.newPage();

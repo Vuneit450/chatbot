@@ -4,7 +4,7 @@ import secrets
 from datetime import timedelta
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, abort, jsonify, render_template, request, session
 
 import commerce
 import db
@@ -126,6 +126,14 @@ def _ensure_conversation():
 @app.route("/")
 def home():
     return render_template("index.html")
+
+
+@app.route("/recibo/<token>")
+def recibo(token):
+    pedido = db.pedido_por_token(token)
+    if not pedido:
+        abort(404)
+    return render_template("recibo.html", pedido=pedido)
 
 
 @app.route("/api/start", methods=["POST"])

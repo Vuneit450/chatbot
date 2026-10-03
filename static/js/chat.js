@@ -18,7 +18,7 @@
   function formatLine(line) {
     let out = escapeHtml(line);
     out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, text, url) =>
+    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, (m, text, url) =>
       `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`);
     return out;
   }

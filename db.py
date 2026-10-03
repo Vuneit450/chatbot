@@ -7,6 +7,7 @@ depender solo de la cookie de sesión.
 """
 
 import os
+import secrets
 import time
 from pathlib import Path
 
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   cliente_id INTEGER NOT NULL REFERENCES clientes(id),
   total_mxn REAL NOT NULL,
+  token TEXT UNIQUE,
   creado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -106,6 +108,14 @@ def init_db():
     try:
         conn.executescript(SCHEMA)
         conn.commit()
+        # Migración ligera para bases ya desplegadas antes de que `token`
+        # existiera en pedidos (CREATE TABLE IF NOT EXISTS no altera tablas
+        # que ya existen).
+        try:
+            conn.execute("ALTER TABLE pedidos ADD COLUMN token TEXT")
+            conn.commit()
+        except Exception:
+            pass  # la columna ya existe
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM productos")
         if cur.fetchone()[0] == 0:
@@ -269,11 +279,12 @@ def confirmar_pedido(cliente_id):
     if not items:
         return None
     total = sum(i["precio_mxn"] for i in items)
+    token = secrets.token_urlsafe(16)
     conn = get_connection()
     try:
         conn.execute(
-            "INSERT INTO pedidos (cliente_id, total_mxn) VALUES (?, ?)",
-            (cliente_id, total),
+            "INSERT INTO pedidos (cliente_id, total_mxn, token) VALUES (?, ?, ?)",
+            (cliente_id, total, token),
         )
         pedido_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         for item in items:
@@ -288,7 +299,39 @@ def confirmar_pedido(cliente_id):
             )
         conn.execute("DELETE FROM carrito_items WHERE cliente_id = ?", (cliente_id,))
         conn.commit()
-        return {"pedido_id": pedido_id, "items": items, "total_mxn": total}
+        return {"pedido_id": pedido_id, "items": items, "total_mxn": total, "token": token}
+    finally:
+        conn.close()
+
+
+def pedido_por_token(token):
+    """Para la página pública de recibo: el token (no el id secuencial)
+    es lo que controla el acceso, para que no se puedan enumerar pedidos
+    ajenos solo subiendo un número."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT pe.id, pe.total_mxn, pe.creado_en, c.nombre
+            FROM pedidos pe JOIN clientes c ON c.id = pe.cliente_id
+            WHERE pe.token = ?
+            """,
+            (token,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        pedido = {"id": row[0], "total_mxn": row[1], "creado_en": row[2], "cliente_nombre": row[3]}
+        cur.execute(
+            "SELECT servicio, plan, precio_mxn, cantidad FROM pedido_items WHERE pedido_id = ?",
+            (pedido["id"],),
+        )
+        pedido["items"] = [
+            {"servicio": r[0], "plan": r[1], "precio_mxn": r[2], "cantidad": r[3]}
+            for r in cur.fetchall()
+        ]
+        return pedido
     finally:
         conn.close()
 

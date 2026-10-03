@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recibo #{{ pedido.id }} · Bot Oreo</title>
+  <style>
+    :root {
+      --bg: #F3E9DC; --surface: #FFFFFF; --surface2: #EDE0CD; --edge: #D8C6AA;
+      --ink: #3B2A20; --muted: #8A7562; --accent: #C98A3B;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1E1710; --surface: #2A2119; --surface2: #251D16; --edge: #4A3B2C;
+        --ink: #F0E6D8; --muted: #B8A88F; --accent: #E0A458;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; justify-content: center; padding: 24px 16px;
+    }
+    .receipt {
+      width: 100%; max-width: 420px; background: var(--surface);
+      border: 2px solid var(--edge); border-radius: 18px; padding: 24px;
+      box-shadow: 2px 2px 0 var(--edge);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .brand .cookie { font-size: 1.6rem; }
+    .brand h1 { margin: 0; font-size: 1.1rem; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    hr { border: none; border-top: 2px dashed var(--edge); margin: 16px 0; }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 0.92rem; }
+    .row .plan { color: var(--muted); font-size: 0.8rem; }
+    .total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; margin-top: 10px; }
+    .footer { margin-top: 18px; text-align: center; font-size: 0.78rem; color: var(--muted); }
+    @media print { body { padding: 0; } .receipt { box-shadow: none; border: none; max-width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="brand"><span class="cookie">🍪</span><h1>Bot Oreo</h1></div>
+    <p class="muted">Recibo #{{ pedido.id }} · {{ pedido.creado_en }}</p>
+    <p class="muted">Cliente: {{ pedido.cliente_nombre }}</p>
+    <hr>
+    {% for item in pedido['items'] %}
+    <div class="row">
+      <div><strong>{{ item.servicio }}</strong><div class="plan">{{ item.plan }}{% if item.cantidad > 1 %} × {{ item.cantidad }}{% endif %}</div></div>
+      <div>${{ "%.0f"|format(item.precio_mxn * item.cantidad) }} MXN</div>
+    </div>
+    {% endfor %}
+    <hr>
+    <div class="total"><span>Total</span><span>${{ "%.0f"|format(pedido.total_mxn) }} MXN</span></div>
+    <p class="footer">Gracias por tu compra 🎉</p>
+  </div>
+</body>
+</html>

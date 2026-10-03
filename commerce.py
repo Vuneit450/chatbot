@@ -164,6 +164,8 @@ def _render_producto_agregado(data):
 def _render_pedido_confirmado(cliente, data):
     pedido = data.get("_ultimo_pedido") or {}
     lines = [f"🎉 ¡Pedido #{pedido.get('pedido_id', '?')} confirmado! Total: {money(pedido.get('total_mxn', 0))}", "Te compartiremos los datos de acceso en breve."]
+    if pedido.get("token"):
+        lines.append(f"🧾 Tu recibo: [verlo aquí]({'/recibo/' + pedido['token']})")
     sugerido = db.sugerencia_producto(cliente["id"]) if cliente else None
     if sugerido:
         lines += [
