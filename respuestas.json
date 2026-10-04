@@ -92,32 +92,29 @@
       "🔑 Has seleccionado 'Inicio'. Elige una opción para continuar:",
       "1️⃣ Ver productos - Descubre nuestros productos en venta.",
       "2️⃣ Pedido - Administra tu pedido.",
-      "3️⃣ Ofertas - Consulta las ofertas de la semana.",
-      "4️⃣ Ayuda - Encuentra asistencia o consulta FAQs.",
-      "5️⃣ Pago - Información y métodos de pago.",
-      "6️⃣ Comunidad - Únete a nuestro grupo y entérate de novedades.",
+      "3️⃣ Ayuda - Encuentra asistencia o consulta FAQs.",
+      "4️⃣ Pago - Información y métodos de pago.",
+      "5️⃣ Comunidad - Únete a nuestro grupo y entérate de novedades.",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Menú de inicio. Aquí puedes explorar productos, gestionar pedidos, ver ofertas, recibir ayuda, consultar métodos de pago o acceder a la comunidad.",
+    "descripcion": "Menú de inicio. Aquí puedes explorar productos, gestionar pedidos, recibir ayuda, consultar métodos de pago o acceder a la comunidad.",
     "categoria": "inicio",
     "opciones": {
       "1": "catalogo_productos",
       "2": "pedido",
-      "3": "ofertas_semana",
-      "4": "ayuda",
-      "5": "metodo_pago",
-      "6": "comunidad",
+      "3": "ayuda",
+      "4": "metodo_pago",
+      "5": "comunidad",
       "0": "menu_principal",
       "*": "menu_principal"
     },
     "iconos": {
       "1": {"icon": "productos", "titulo": "Ver productos"},
       "2": {"icon": "pedido", "titulo": "Pedido"},
-      "3": {"icon": "ofertas", "titulo": "Ofertas"},
-      "4": {"icon": "ayuda", "titulo": "Ayuda"},
-      "5": {"icon": "pago", "titulo": "Pago"},
-      "6": {"icon": "comunidad", "titulo": "Comunidad"}
+      "3": {"icon": "ayuda", "titulo": "Ayuda"},
+      "4": {"icon": "pago", "titulo": "Pago"},
+      "5": {"icon": "comunidad", "titulo": "Comunidad"}
     }
   },
   "catalogo_productos": {
@@ -127,7 +124,6 @@
       "2️⃣ Entregas personales",
       "3️⃣ Envíos por paquetería",
       "4️⃣ Películas",
-      "5️⃣ Videojuegos",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
@@ -138,7 +134,6 @@
       "2": "entregas_personales",
       "3": "envios_paqueteria",
       "4": "peliculas",
-      "5": "videojuegos",
       "0": "inicio",
       "*": "menu_principal"
     },
@@ -146,8 +141,7 @@
       "1": {"icon": "musica", "titulo": "Música"},
       "2": {"icon": "entregas", "titulo": "Entregas personales"},
       "3": {"icon": "envios", "titulo": "Envíos por paquetería"},
-      "4": {"icon": "peliculas", "titulo": "Películas"},
-      "5": {"icon": "videojuegos", "titulo": "Videojuegos"}
+      "4": {"icon": "peliculas", "titulo": "Películas"}
     }
   },
   "entregas_personales": {
@@ -232,22 +226,6 @@
     "categoria": "comprar",
     "opciones": {
       "0": "pedido",
-      "*": "menu_principal"
-    }
-  },
-  "ofertas_semana": {
-    "texto": [
-      "🎉 Ofertas de la Semana:",
-      "1️⃣ 50% de descuento en películas de Netflix (vigente hasta el viernes).",
-      "2️⃣ Compra 1 y llévate 2 en apps de productividad (aplican restricciones).",
-      "3️⃣ Descuento exclusivo en vuelos nacionales (consulta términos y condiciones).",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Sección de ofertas. Revisa las promociones vigentes y aprovecha los descuentos especiales.",
-    "categoria": "ofertas",
-    "opciones": {
-      "0": "inicio",
       "*": "menu_principal"
     }
   },
@@ -451,21 +429,6 @@
     "categoria": "netflix",
     "opciones": {
       "0": "peliculas",
-      "*": "menu_principal"
-    }
-  },
-  "videojuegos": {
-    "texto": [
-      "🎮 Videojuegos disponibles:",
-      "1️⃣ Game Pass",
-      "2️⃣ Monedas de juegos",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Explora las opciones en videojuegos, desde servicios de suscripción hasta moneda virtual.",
-    "categoria": "videojuegos",
-    "opciones": {
-      "0": "catalogo_productos",
       "*": "menu_principal"
     }
   },

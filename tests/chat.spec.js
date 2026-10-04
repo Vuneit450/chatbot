@@ -137,11 +137,11 @@ test.describe('Bot Oreo', () => {
     await page.goto('/');
     await clickOption(page, 'Inicio');
     const opciones = page.locator('.tile');
-    await expect(opciones).toHaveCount(6);
+    await expect(opciones).toHaveCount(5);
     await expect(opciones.nth(0)).toContainText('Ver productos');
     await expect(opciones.nth(0).locator('img')).toHaveAttribute('src', '/static/icons/catalog/productos.svg');
     await expect(opciones.nth(1)).toContainText('Pedido');
-    await expect(opciones.nth(5)).toContainText('Comunidad');
+    await expect(opciones.nth(4)).toContainText('Comunidad');
     // 0️⃣/*️⃣ (volver) siguen siendo chips normales, no tarjetas.
     await expect(page.locator('.chip')).toHaveCount(2);
   });
@@ -208,7 +208,7 @@ test.describe('Bot Oreo', () => {
     await clickOption(page, 'Ver catálogo');
 
     const categorias = page.locator('.tile');
-    await expect(categorias).toHaveCount(5);
+    await expect(categorias).toHaveCount(4);
     await expect(categorias.nth(0)).toContainText('Música');
     await expect(categorias.nth(0).locator('img')).toHaveAttribute('src', '/static/icons/catalog/musica.svg');
     await expect(categorias.nth(3)).toContainText('Películas');
