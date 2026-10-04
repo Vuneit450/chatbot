@@ -75,10 +75,30 @@ def node_payload(node_id, ctx):
     }
 
 
+def _es_nodo_texto_libre(node_id):
+    """True para los nodos que esperan texto libre con significado propio
+    (un nombre, un teléfono...), donde "activar"/"menu" deben tratarse como
+    el dato que el usuario está escribiendo y no como un comando global."""
+    if node_id == "identificarme":
+        return True
+    node = NODES.get(node_id)
+    return bool(node and node.get("captura"))
+
+
 def advance(current_node, raw_message, ctx):
     """Aplica un mensaje del usuario al estado actual y regresa
     (siguiente_nodo, {"data": {...}, "cliente_id": opcional})."""
     message = raw_message.strip()
+
+    # Los comandos globales deben ganarle a CUALQUIER nodo —incluyendo los
+    # dinámicos de comercio (carrito, checkout, mi cuenta...), que de otro
+    # modo siempre interceptan el mensaje antes de que este chequeo
+    # pudiera alcanzarlos y lo descartan en silencio como una opción
+    # inválida.
+    if not _es_nodo_texto_libre(current_node):
+        lowered = message.lower()
+        if lowered in GLOBAL_COMMANDS:
+            return GLOBAL_COMMANDS[lowered], {}
 
     dynamic = commerce.advance(current_node, message, ctx)
     if dynamic is not None:
@@ -88,11 +108,6 @@ def advance(current_node, raw_message, ctx):
     node = NODES.get(current_node) or NODES[START_NODE]
     options = node.get("opciones", {})
     capture_key = node.get("captura")
-
-    if not capture_key:
-        lowered = message.lower()
-        if lowered in GLOBAL_COMMANDS:
-            return GLOBAL_COMMANDS[lowered], {}
 
     if message in options:
         return options[message], {}
@@ -142,6 +157,21 @@ def _ensure_conversation():
         session["data"] = {}
 
 
+# Última red de seguridad: si algo truena en advance()/node_payload() (un
+# bug nuevo, Turso con un bache, lo que sea), Flask por defecto regresaría
+# un 500 en HTML que el frontend no puede interpretar como conversación —
+# tal como pasó con el aviso a Bolsillo antes de acotar su propio except.
+# Esto evita que un error server-side deje al usuario sin ninguna opción
+# en pantalla; el botón de reiniciar (que no depende de sesión) sigue
+# disponible para salir del paso.
+FALLBACK_PAYLOAD = {
+    "node": "error",
+    "lines": ["⚠️ Tuvimos un problema técnico de nuestro lado. Intenta de nuevo o usa el botón de reiniciar."],
+    "options": [],
+    "freeText": False,
+}
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -161,7 +191,11 @@ def api_start():
     # te desconecta: seguimos sabiendo quién eres.
     session["node"] = START_NODE
     session["data"] = {}
-    return jsonify(node_payload(START_NODE, _ctx()))
+    try:
+        return jsonify(node_payload(START_NODE, _ctx()))
+    except Exception:
+        app.logger.exception("Error construyendo el menú principal")
+        return jsonify(FALLBACK_PAYLOAD)
 
 
 @app.route("/api/state", methods=["GET"])
@@ -169,7 +203,11 @@ def api_state():
     """Recupera dónde se quedó la conversación (p.ej. tras recargar la
     página) sin reiniciarla, arrancándola si todavía no existía."""
     _ensure_conversation()
-    return jsonify(node_payload(session["node"], _ctx()))
+    try:
+        return jsonify(node_payload(session["node"], _ctx()))
+    except Exception:
+        app.logger.exception("Error recuperando el estado de la conversación")
+        return jsonify(FALLBACK_PAYLOAD)
 
 
 @app.route("/api/message", methods=["POST"])
@@ -181,15 +219,23 @@ def api_message():
     if not message.strip():
         return jsonify(node_payload(session["node"], _ctx()))
 
-    next_node, updates = advance(session["node"], message, _ctx())
-    data = dict(session.get("data", {}))
-    data.update(updates.get("data", {}))
-    session["node"] = next_node
-    session["data"] = data
-    if "cliente_id" in updates:
-        session["cliente_id"] = updates["cliente_id"]
-        session.permanent = True
-    return jsonify(node_payload(next_node, _ctx()))
+    current_node = session["node"]
+    try:
+        next_node, updates = advance(current_node, message, _ctx())
+        data = dict(session.get("data", {}))
+        data.update(updates.get("data", {}))
+        session["node"] = next_node
+        session["data"] = data
+        if "cliente_id" in updates:
+            session["cliente_id"] = updates["cliente_id"]
+            session.permanent = True
+        return jsonify(node_payload(next_node, _ctx()))
+    except Exception:
+        # No se tocó la sesión (todas las asignaciones de arriba ya habrían
+        # corrido si advance() no hubiera tronado), así que el usuario
+        # sigue en current_node y puede reintentar sin perder su lugar.
+        app.logger.exception("Error procesando el mensaje del usuario")
+        return jsonify(FALLBACK_PAYLOAD)
 
 
 if __name__ == "__main__":

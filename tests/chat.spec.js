@@ -350,6 +350,24 @@ test.describe('Bot Oreo', () => {
     await expect(page.locator('.msg.bot').last()).toContainText('primero necesito identificarte');
   });
 
+  test('"activar"/"menu" funcionan hasta dentro de una pantalla dinámica como el carrito', async ({ page }) => {
+    // Bug real: commerce.advance() siempre resuelve el mensaje en nodos
+    // como "carrito", así que los comandos globales nunca alcanzaban a
+    // revisarse ahí y se perdían en silencio (se quedaba en el mismo
+    // nodo) pese a que el código decía soportarlos "en cualquier punto".
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Uli' });
+    await send(page, '*');
+
+    await clickOption(page, 'Mi carrito'); // nodo dinámico "carrito"
+    await send(page, 'menu');
+    await expect(page.locator('.msg.bot').last()).toContainText('¡Qué bueno verte de nuevo, Uli!');
+
+    await clickOption(page, 'Mi carrito');
+    await send(page, 'Activar');
+    await expect(page.locator('.msg.bot').last()).toContainText('bot ha sido activado');
+  });
+
   test('un teléfono que no existe ofrece registrarte en vez de dejarte varado', async ({ page }) => {
     await page.goto('/');
     await clickOption(page, 'Ya tengo cuenta');
