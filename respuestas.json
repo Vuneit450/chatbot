@@ -320,13 +320,10 @@
   "opciones_spotify": {
     "texto": [
       "🎵 Opciones de Spotify:",
-      "1️⃣ 50 MXN - 1 perfil (1 mes)",
-      "2️⃣ 80 MXN - 2 perfiles (1 mes)",
-      "3️⃣ 20 MXN - Perfil adicional",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Opciones de suscripción para Spotify. Consulta los planes disponibles y elige el que más se adapte a ti.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "spotify",
     "opciones": {
       "0": "servicios_musica",
@@ -336,13 +333,10 @@
   "opciones_youtube_music": {
     "texto": [
       "🎵 Opciones de YouTube Music:",
-      "1️⃣ 50 MXN - 1 perfil (1 mes)",
-      "2️⃣ 80 MXN - 2 perfiles (1 mes)",
-      "3️⃣ 20 MXN - Perfil adicional",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Opciones de suscripción para YouTube Music. Elige el plan que se ajuste a tus necesidades.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "youtube",
     "opciones": {
       "0": "servicios_musica",
@@ -352,11 +346,10 @@
   "opciones_amazon_music": {
     "texto": [
       "🎵 Opciones de Amazon Music:",
-      "1️⃣ 50 MXN - 1 perfil (1 mes)",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Plan de suscripción para Amazon Music. Consulta la opción disponible.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "amazon",
     "opciones": {
       "0": "servicios_musica",
@@ -390,12 +383,10 @@
   "opciones_crunchyroll": {
     "texto": [
       "🎬 Opciones de Crunchyroll:",
-      "1️⃣ 85 MXN - Cuenta completa (1 perfil)",
-      "2️⃣ 50 MXN - Cuenta compartida (1 mes)",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Planes disponibles para Crunchyroll. Consulta los precios y el tipo de cuenta.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "crunchyroll",
     "opciones": {
       "0": "peliculas",
@@ -405,12 +396,10 @@
   "opciones_amazon_prime_video": {
     "texto": [
       "🎬 Opciones de Amazon Prime Video:",
-      "1️⃣ 65 MXN - 1 cuenta (1 mes)",
-      "2️⃣ 50 MXN - Cuenta compartida",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Planes de Amazon Prime Video. Elige la opción que prefieras para disfrutar de tus series y películas.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "amazon_prime",
     "opciones": {
       "0": "peliculas",
@@ -420,12 +409,10 @@
   "opciones_netflix": {
     "texto": [
       "🎬 Opciones de Netflix:",
-      "1️⃣ 85 MXN - 1 perfil",
-      "2️⃣ 60 MXN - Cuenta adicional",
       "0️⃣ Volver al menú anterior",
       "*️⃣ Volver al menú principal"
     ],
-    "descripcion": "Planes de suscripción para Netflix. Revisa las opciones disponibles.",
+    "descripcion": "Nodo de solo enrutamiento: commerce.py intercepta el render completo (planes y precios reales vienen de la base de datos, no de aquí) y solo usa 'opciones' para resolver 0/* al volver. Cambiar precios aquí no tiene ningún efecto — ver db.CATALOGO_SEED.",
     "categoria": "netflix",
     "opciones": {
       "0": "peliculas",
@@ -437,27 +424,13 @@
       "🔍 Buscar mi información:",
       "1️⃣ Consultar datos personales",
       "2️⃣ Actualizar información",
-      "0️⃣ Volver al menú anterior"
+      "0️⃣ Volver al menú anterior",
+      "*️⃣ Volver al menú principal"
     ],
     "descripcion": "Consulta o actualiza tu información personal en esta sección.",
     "categoria": "informacion",
     "opciones": {
       "1": "mi_cuenta",
-      "0": "ayuda",
-      "*": "menu_principal"
-    }
-  },
-  "carrito": {
-    "texto": [
-      "🛒 Carrito:",
-      "Revisa los productos que has seleccionado para tu compra.",
-      "Podrás agregar o quitar productos desde aquí.",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Sección del carrito de compras. Administra los productos que deseas adquirir.",
-    "categoria": "carrito",
-    "opciones": {
       "0": "ayuda",
       "*": "menu_principal"
     }
