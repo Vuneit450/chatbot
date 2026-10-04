@@ -186,6 +186,27 @@ def upsert_cliente(nombre, correo, usuario, telefono):
         conn.close()
 
 
+def actualizar_cliente(cliente_id, nombre, correo, usuario, telefono):
+    """Actualiza el perfil de un cliente YA IDENTIFICADO (distinto de
+    upsert_cliente, que busca por teléfono y puede crear uno nuevo). Si el
+    teléfono nuevo ya le pertenece a OTRO cliente, no se guarda nada —
+    regresa (False, "telefono_en_uso") para no robarle la cuenta a nadie."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM clientes WHERE telefono = ? AND id != ?", (telefono, cliente_id))
+        if cur.fetchone():
+            return False, "telefono_en_uso"
+        conn.execute(
+            "UPDATE clientes SET nombre = ?, correo = ?, usuario = ?, telefono = ? WHERE id = ?",
+            (nombre, correo, usuario, telefono, cliente_id),
+        )
+        conn.commit()
+        return True, None
+    finally:
+        conn.close()
+
+
 def _row_to_cliente(row):
     if not row:
         return None

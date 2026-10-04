@@ -90,6 +90,14 @@ def render(node_id, ctx):
     if node_id == "mi_cuenta":
         cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
         return _render_mi_cuenta(cliente)
+    if node_id == "actualizar_informacion":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
+        if not cliente:
+            return _necesita_cuenta(node_id)
+        return _render_actualizar(cliente, ctx.get("data", {}))
+    if node_id == "actualizar_confirmacion":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
+        return _render_actualizar_confirmacion(cliente) if cliente else None
     if node_id == "producto_agregado":
         return _render_producto_agregado(ctx.get("data", {}))
     if node_id == "pedido_confirmado":
@@ -107,12 +115,14 @@ def _render_menu_principal(cliente):
         "1️⃣ Ver catálogo",
         f"2️⃣ Mi carrito {carrito_label}",
         "3️⃣ Mi cuenta e historial",
+        "4️⃣ Inicio (ayuda, pago, comunidad...)",
         "0️⃣ Salir",
     ]
     options = [
         _tile("1", "Ver catálogo", "productos"),
         _tile("2", "Mi carrito", "carrito"),
         _tile("3", "Mi cuenta", "perfil"),
+        _tile("4", "Inicio", "inicio"),
         _chip("0"),
     ]
     return _payload("menu_principal", lines, options)
@@ -195,6 +205,72 @@ def _render_mi_cuenta(cliente):
     return _payload("mi_cuenta", lines, options)
 
 
+# Pasos del flujo de "Actualizar información" (buscar_informacion → "2"):
+# uno a la vez, igual que el registro, pero actualizando un cliente que ya
+# existe en vez de crear uno nuevo. El progreso vive en ctx.data porque es
+# lo único que persiste entre mensajes de un mismo nodo.
+ACTUALIZAR_PASOS = ["nombre", "correo", "usuario", "telefono"]
+
+
+def _render_actualizar(cliente, data):
+    paso = data.get("_actualizar_paso")
+    if paso not in ACTUALIZAR_PASOS:
+        paso = "nombre"
+    error = data.get("_actualizar_error")
+    if paso == "telefono" and error == "formato":
+        lines = ["⚠️ Ese número no parece válido. Escribe solo tus 10 dígitos, sin espacios ni guiones."]
+    elif paso == "telefono" and error == "telefono_en_uso":
+        lines = ["⚠️ Ese teléfono ya está en uso por otra cuenta. Escribe uno distinto:"]
+    else:
+        prompts = {
+            "nombre": f"Vamos a actualizar tu información. Tu nombre actual es {cliente['nombre']}. Escribe el nuevo (o el mismo si no quieres cambiarlo):",
+            "correo": f"Tu correo actual es {cliente['correo']}. Escribe el nuevo:",
+            "usuario": f"Tu usuario actual es {cliente['usuario']}. Escribe el nuevo:",
+            "telefono": f"Tu teléfono actual es {cliente['telefono']}. Escribe el nuevo (10 dígitos):",
+        }
+        lines = [prompts[paso]]
+    return _payload("actualizar_informacion", lines, [], free_text=True)
+
+
+def _advance_actualizar(message, cliente_id, data):
+    paso = data.get("_actualizar_paso")
+    if paso not in ACTUALIZAR_PASOS:
+        paso = "nombre"
+    nuevos = dict(data.get("_actualizar_datos", {}))
+
+    if paso == "telefono":
+        telefono = clean_phone(message)
+        if len(telefono) != 10:
+            return "actualizar_informacion", {"data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": "formato"}}
+        nuevos["telefono"] = telefono
+    else:
+        nuevos[paso] = message.strip()[:200]
+
+    idx = ACTUALIZAR_PASOS.index(paso)
+    if idx + 1 < len(ACTUALIZAR_PASOS):
+        siguiente = ACTUALIZAR_PASOS[idx + 1]
+        return "actualizar_informacion", {"data": {"_actualizar_paso": siguiente, "_actualizar_datos": nuevos, "_actualizar_error": None}}
+
+    ok, error = db.actualizar_cliente(cliente_id, nuevos["nombre"], nuevos["correo"], nuevos["usuario"], nuevos["telefono"])
+    if not ok:
+        # El teléfono nuevo ya era de otro cliente: se pide de nuevo sin
+        # perder lo ya capturado (nombre/correo/usuario).
+        return "actualizar_informacion", {"data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": error}}
+    return "actualizar_confirmacion", {"data": {"_actualizar_paso": None, "_actualizar_datos": {}, "_actualizar_error": None}}
+
+
+def _render_actualizar_confirmacion(cliente):
+    lines = [
+        "✅ Tu información quedó actualizada:",
+        f"- Nombre: {cliente['nombre']}",
+        f"- Correo: {cliente['correo']}",
+        f"- Usuario: {cliente['usuario']}",
+        f"- Teléfono: {cliente['telefono']}",
+        "0️⃣ Volver al menú principal",
+    ]
+    return _payload("actualizar_confirmacion", lines, [_chip("0")])
+
+
 def _render_producto_agregado(data):
     p = data.get("_ultimo_producto") or {}
     lines = [
@@ -247,6 +323,13 @@ def advance(node_id, message, ctx):
         return mapping.get(message, "menu_principal"), {}
     if node_id == "mi_cuenta":
         return _advance_mi_cuenta(message, cliente_id)
+    if node_id == "actualizar_informacion":
+        if not cliente_id:
+            mapping = {"1": "registro", "2": "identificarme"}
+            return mapping.get(message, "actualizar_informacion"), {}
+        return _advance_actualizar(message, cliente_id, ctx.get("data", {}))
+    if node_id == "actualizar_confirmacion":
+        return "menu_principal", {}
     if node_id == "producto_agregado":
         mapping = {"1": ctx.get("data", {}).get("_ultima_categoria_node", "catalogo_productos"), "2": "carrito"}
         return mapping.get(message, "menu_principal"), {}
@@ -256,7 +339,7 @@ def advance(node_id, message, ctx):
 
 
 def _advance_menu_principal(message):
-    mapping = {"1": "catalogo_productos", "2": "carrito", "3": "mi_cuenta", "0": "salir"}
+    mapping = {"1": "catalogo_productos", "2": "carrito", "3": "mi_cuenta", "4": "inicio", "0": "salir"}
     return mapping.get(message, "menu_principal"), {}
 
 

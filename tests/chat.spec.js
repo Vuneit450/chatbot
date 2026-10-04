@@ -181,9 +181,10 @@ test.describe('Bot Oreo', () => {
     await send(page, '*');
 
     const principales = page.locator('.tile');
-    await expect(principales).toHaveCount(3); // Ver catálogo, Mi carrito, Mi cuenta
+    await expect(principales).toHaveCount(4); // Ver catálogo, Mi carrito, Mi cuenta, Inicio
     await expect(principales.nth(0)).toContainText('Ver catálogo');
     await expect(principales.nth(2)).toContainText('Mi cuenta');
+    await expect(principales.nth(3)).toContainText('Inicio');
     await expect(page.locator('.chip')).toHaveCount(1); // Salir
 
     await clickOption(page, 'Ver catálogo');
@@ -373,5 +374,97 @@ test.describe('Bot Oreo', () => {
     await clickOption(page, 'Ya tengo cuenta');
     await send(page, '0000000000000');
     await expect(page.locator('.msg.bot').last()).toContainText('No encontramos ninguna cuenta');
+  });
+
+  async function irAActualizarInformacion(page) {
+    // Antes de este cambio, todo este subárbol (Ayuda, Horarios, Pago,
+    // Comunidad, Buscar información) quedaba inalcanzable para siempre en
+    // cuanto el cliente se identificaba: el menú dinámico no ofrecía
+    // ninguna salida hacia "Inicio". Este camino prueba que ya se puede.
+    await clickOption(page, 'Inicio');
+    await clickOption(page, 'Ayuda');
+    await clickOption(page, 'Buscar información');
+    await clickOption(page, '2️⃣'); // Actualizar información
+  }
+
+  test('actualizar información cambia el perfil completo y sigue accesible ya identificado', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Memo', correo: 'memo@test.com', usuario: 'memou' });
+    await send(page, '*');
+    await irAActualizarInformacion(page);
+
+    await expect(page.locator('.msg.bot').last()).toContainText('Memo');
+    await send(page, 'Guillermo');
+    await expect(page.locator('.msg.bot').last()).toContainText('memo@test.com');
+    await send(page, 'guille@test.com');
+    await expect(page.locator('.msg.bot').last()).toContainText('memou');
+    await send(page, 'guillermou');
+    const nuevoTelefono = uniquePhone();
+    await send(page, nuevoTelefono);
+
+    const confirmado = page.locator('.msg.bot').last();
+    await expect(confirmado).toContainText('Guillermo');
+    await expect(confirmado).toContainText('guille@test.com');
+    await expect(confirmado).toContainText('guillermou');
+    await expect(confirmado).toContainText(nuevoTelefono);
+
+    await clickOption(page, '0️⃣'); // volver al menú principal
+    await clickOption(page, 'Mi cuenta');
+    await expect(page.locator('.msg.bot').last()).toContainText('Guillermo');
+  });
+
+  test('un teléfono inválido al actualizar se rechaza sin perder lo ya capturado', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Nora' });
+    await send(page, '*');
+    await irAActualizarInformacion(page);
+
+    await send(page, 'Nora Actualizada');
+    await send(page, 'nora@test.com');
+    await send(page, 'norau');
+    await send(page, '123'); // inválido
+    await expect(page.locator('.msg.bot').last()).toContainText('no parece válido');
+
+    const telefono = uniquePhone();
+    await send(page, telefono);
+    const confirmado = page.locator('.msg.bot').last();
+    await expect(confirmado).toContainText('Nora Actualizada');
+    await expect(confirmado).toContainText(telefono);
+  });
+
+  test('no se puede robar el teléfono de otro cliente a través de "Actualizar información"', async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    await pageA.goto('/');
+    const telefonoA = await registrarCliente(pageA, { nombre: 'Clienta A' });
+    await ctxA.close();
+
+    // Contexto nuevo = cliente nuevo, sin la sesión de A.
+    const ctxB = await browser.newContext();
+    const pageB = await ctxB.newPage();
+    await pageB.goto('/');
+    await registrarCliente(pageB, { nombre: 'Clienta B' });
+    await send(pageB, '*');
+    await irAActualizarInformacion(pageB);
+    await send(pageB, 'Clienta B');
+    await send(pageB, 'b@test.com');
+    await send(pageB, 'bbb');
+    await send(pageB, telefonoA); // intenta robar el teléfono de A
+    await expect(pageB.locator('.msg.bot').last()).toContainText('ya está en uso');
+
+    // B puede seguir intentando con un teléfono propio y sí completar.
+    const telefonoB = uniquePhone();
+    await send(pageB, telefonoB);
+    await expect(pageB.locator('.msg.bot').last()).toContainText('Clienta B');
+    await ctxB.close();
+
+    // El teléfono de A sigue identificando a A, no a B, en un tercer contexto.
+    const ctxC = await browser.newContext();
+    const pageC = await ctxC.newPage();
+    await pageC.goto('/');
+    await clickOption(pageC, 'Ya tengo cuenta');
+    await send(pageC, telefonoA);
+    await expect(pageC.locator('.msg.bot').last()).toContainText('Clienta A');
+    await ctxC.close();
   });
 });

@@ -79,7 +79,7 @@ def _es_nodo_texto_libre(node_id):
     """True para los nodos que esperan texto libre con significado propio
     (un nombre, un teléfono...), donde "activar"/"menu" deben tratarse como
     el dato que el usuario está escribiendo y no como un comando global."""
-    if node_id == "identificarme":
+    if node_id in ("identificarme", "actualizar_informacion"):
         return True
     node = NODES.get(node_id)
     return bool(node and node.get("captura"))
