@@ -20,7 +20,7 @@ function uniquePhone() {
 }
 
 async function registrarCliente(page, { nombre = 'Jonathan', correo = 'jonathan@binatsa.mx', usuario = 'jonab', telefono = uniquePhone() } = {}) {
-  await clickOption(page, '1️⃣');
+  await clickOption(page, 'Registro');
   await send(page, nombre);
   await send(page, correo);
   await send(page, usuario);
@@ -35,13 +35,16 @@ test.describe('Bot Oreo', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     await page.goto('/');
     await expect(page.locator('.msg.bot').first()).toContainText('Bienvenido a la familia Oreo');
-    await expect(page.locator('.chip')).toHaveCount(5);
+    // Las 5 opciones (Registro/Inicio/Salir/Activar/Ya tengo cuenta) son
+    // tarjetas visuales; este menú no tiene botones de navegación 0️⃣/*️⃣.
+    await expect(page.locator('.tile')).toHaveCount(5);
+    await expect(page.locator('.chip')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
   test('flujo completo de registro captura los 4 campos y no deja variables sin rellenar', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '1️⃣');
+    await clickOption(page, 'Registro');
     await expect(page.locator('.msg.bot').last()).toContainText('proporciona tu nombre');
 
     await page.fill('#messageInput', 'Jonathan');
@@ -71,7 +74,7 @@ test.describe('Bot Oreo', () => {
 
   test('un teléfono inválido en el registro se rechaza y no pisa la cuenta de otro cliente', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '1️⃣');
+    await clickOption(page, 'Registro');
     await send(page, 'Bruno');
     await send(page, 'bruno@test.com');
     await send(page, 'brunob');
@@ -90,7 +93,7 @@ test.describe('Bot Oreo', () => {
 
   test('salir es un callejón sin salida hasta escribir "Activar"', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '3️⃣');
+    await clickOption(page, 'Salir');
     await expect(page.locator('.msg.bot').last()).toContainText("Has seleccionado 'Salir'");
 
     await page.fill('#messageInput', 'cualquier cosa');
@@ -104,7 +107,7 @@ test.describe('Bot Oreo', () => {
 
   test('el botón reiniciar limpia el historial y vuelve al menú principal', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '2️⃣');
+    await clickOption(page, 'Inicio');
     await expect(page.locator('.msg.bot').last()).toContainText("Has seleccionado 'Inicio'");
 
     await page.click('#restartBtn');
@@ -114,7 +117,7 @@ test.describe('Bot Oreo', () => {
 
   test('recargar la página conserva el historial visible (sessionStorage)', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '2️⃣');
+    await clickOption(page, 'Inicio');
     await expect(page.locator('.msg.bot').last()).toContainText("Has seleccionado 'Inicio'");
     await page.reload();
     await expect(page.locator('.msg.bot').last()).toContainText("Has seleccionado 'Inicio'");
@@ -122,12 +125,25 @@ test.describe('Bot Oreo', () => {
 
   test('un enlace de WhatsApp se renderiza como <a> real, no como texto crudo', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '2️⃣');
-    await clickOption(page, '6️⃣');
+    await clickOption(page, 'Inicio');
+    await clickOption(page, 'Comunidad');
     const link = page.locator('.msg.bot').last().locator('a');
     await expect(link).toHaveAttribute('href', /^https:\/\//);
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', /noopener/);
+  });
+
+  test('el menú de "Inicio" también usa tarjetas visuales para sus 6 opciones', async ({ page }) => {
+    await page.goto('/');
+    await clickOption(page, 'Inicio');
+    const opciones = page.locator('.tile');
+    await expect(opciones).toHaveCount(6);
+    await expect(opciones.nth(0)).toContainText('Ver productos');
+    await expect(opciones.nth(0).locator('img')).toHaveAttribute('src', '/static/icons/catalog/productos.svg');
+    await expect(opciones.nth(1)).toContainText('Pedido');
+    await expect(opciones.nth(5)).toContainText('Comunidad');
+    // 0️⃣/*️⃣ (volver) siguen siendo chips normales, no tarjetas.
+    await expect(page.locator('.chip')).toHaveCount(2);
   });
 
   test('sin scroll horizontal a 360px, claro y oscuro', async ({ page }) => {
@@ -159,11 +175,37 @@ test.describe('Bot Oreo', () => {
     await expect(last).not.toContainText('Registro');
   });
 
+  test('el menú principal ya identificado usa tarjetas, y el carrito reutiliza el ícono de la plataforma', async ({ page }) => {
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Noe' });
+    await send(page, '*');
+
+    const principales = page.locator('.tile');
+    await expect(principales).toHaveCount(3); // Ver catálogo, Mi carrito, Mi cuenta
+    await expect(principales.nth(0)).toContainText('Ver catálogo');
+    await expect(principales.nth(2)).toContainText('Mi cuenta');
+    await expect(page.locator('.chip')).toHaveCount(1); // Salir
+
+    await clickOption(page, 'Ver catálogo');
+    await clickOption(page, 'Música');
+    await clickOption(page, 'Spotify');
+    await clickOption(page, '1️⃣'); // agrega el primer plan (la lista de planes no es tarjeta)
+    await clickOption(page, 'Ver carrito');
+
+    // El producto en el carrito muestra el mismo ícono que ya vimos en el
+    // catálogo para Spotify, no uno genérico sin relación.
+    await expect(page.locator('.tile')).toHaveCount(2); // el producto + "Comprar"
+    const itemCarrito = page.locator('.tile').nth(0);
+    await expect(itemCarrito).toContainText('Spotify');
+    await expect(itemCarrito.locator('img')).toHaveAttribute('src', '/static/icons/catalog/spotify.svg');
+    await expect(page.locator('.tile').nth(1)).toContainText('Comprar');
+  });
+
   test('el catálogo muestra tarjetas visuales (imagen + título) en vez de solo números', async ({ page }) => {
     await page.goto('/');
     await registrarCliente(page, { nombre: 'Vale' });
     await send(page, '*');
-    await clickOption(page, '1️⃣'); // catálogo
+    await clickOption(page, 'Ver catálogo');
 
     const categorias = page.locator('.tile');
     await expect(categorias).toHaveCount(5);
@@ -193,7 +235,7 @@ test.describe('Bot Oreo', () => {
     await page.goto('/');
     await registrarCliente(page, { nombre: 'Dana' });
     await send(page, '*');
-    await clickOption(page, '1️⃣'); // catálogo
+    await clickOption(page, 'Ver catálogo');
     await clickOption(page, 'Música'); // tarjeta visual
     await clickOption(page, 'Spotify'); // tarjeta visual
     const planes = page.locator('.msg.bot').last();
@@ -201,14 +243,14 @@ test.describe('Bot Oreo', () => {
     await clickOption(page, '1️⃣'); // agrega el primer plan
     await expect(page.locator('.msg.bot').last()).toContainText('Agregado a tu carrito');
 
-    await clickOption(page, '2️⃣'); // ver carrito
+    await clickOption(page, 'Ver carrito');
     const carrito = page.locator('.msg.bot').last();
     await expect(carrito).toContainText('Spotify');
     await expect(carrito).toContainText('Total: $');
 
     await send(page, 'comprar');
     await expect(page.locator('.msg.bot').last()).toContainText('Vas a confirmar este pedido');
-    await clickOption(page, '1️⃣'); // confirmar compra
+    await clickOption(page, 'Confirmar compra');
     const confirmado = page.locator('.msg.bot').last();
     await expect(confirmado).toContainText('confirmado');
     await expect(confirmado).toContainText('Total: $');
@@ -218,7 +260,7 @@ test.describe('Bot Oreo', () => {
     await expect(confirmado).toContainText('qué tal');
 
     await clickOption(page, '0️⃣'); // no gracias, volver al menú
-    await clickOption(page, '3️⃣'); // mi cuenta e historial
+    await clickOption(page, 'Mi cuenta');
     const cuenta = page.locator('.msg.bot').last();
     await expect(cuenta).toContainText('Dana');
     await expect(cuenta).toContainText('Tus últimos pedidos');
@@ -228,13 +270,13 @@ test.describe('Bot Oreo', () => {
     await page.goto('/');
     await registrarCliente(page, { nombre: 'Rita' });
     await send(page, '*');
-    await clickOption(page, '1️⃣'); // catálogo
+    await clickOption(page, 'Ver catálogo');
     await clickOption(page, 'Música'); // tarjeta visual
     await clickOption(page, 'Amazon Music'); // tarjeta visual (un solo plan)
     await clickOption(page, '1️⃣'); // agregar
-    await clickOption(page, '2️⃣'); // ver carrito
+    await clickOption(page, 'Ver carrito');
     await send(page, 'comprar');
-    await clickOption(page, '1️⃣'); // confirmar compra
+    await clickOption(page, 'Confirmar compra');
 
     const confirmado = page.locator('.msg.bot').last();
     const link = confirmado.locator('a[href^="/recibo/"]');
@@ -256,7 +298,7 @@ test.describe('Bot Oreo', () => {
     await pageA.goto('/');
     const telefono = await registrarCliente(pageA, { nombre: 'Erik' });
     await send(pageA, '*');
-    await clickOption(pageA, '1️⃣'); // catálogo
+    await clickOption(pageA, 'Ver catálogo');
     await clickOption(pageA, 'Música'); // tarjeta visual
     await clickOption(pageA, 'YouTube Music'); // tarjeta visual
     await clickOption(pageA, '1️⃣'); // agregar primer plan
@@ -267,7 +309,7 @@ test.describe('Bot Oreo', () => {
     const ctxB = await browser.newContext();
     const pageB = await ctxB.newPage();
     await pageB.goto('/');
-    await clickOption(pageB, '5️⃣'); // ya tengo cuenta
+    await clickOption(pageB, 'Ya tengo cuenta');
     await send(pageB, telefono);
     const menu = pageB.locator('.msg.bot').last();
     await expect(menu).toContainText('Erik');
@@ -277,15 +319,15 @@ test.describe('Bot Oreo', () => {
 
   test('sin identificarse, el carrito pide registrarte o identificarte en vez de tronar', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '2️⃣'); // Inicio
-    await clickOption(page, '2️⃣'); // Pedido
-    await clickOption(page, '2️⃣'); // Mi carrito
+    await clickOption(page, 'Inicio');
+    await clickOption(page, 'Pedido');
+    await clickOption(page, 'Mi carrito');
     await expect(page.locator('.msg.bot').last()).toContainText('primero necesito identificarte');
   });
 
   test('un teléfono que no existe ofrece registrarte en vez de dejarte varado', async ({ page }) => {
     await page.goto('/');
-    await clickOption(page, '5️⃣'); // ya tengo cuenta
+    await clickOption(page, 'Ya tengo cuenta');
     await send(page, '0000000000000');
     await expect(page.locator('.msg.bot').last()).toContainText('No encontramos ninguna cuenta');
   });

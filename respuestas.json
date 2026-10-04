@@ -17,6 +17,13 @@
       "3": "salir",
       "4": "activar",
       "5": "identificarme"
+    },
+    "iconos": {
+      "1": {"icon": "registro", "titulo": "Registro"},
+      "2": {"icon": "inicio", "titulo": "Inicio"},
+      "3": {"icon": "salir", "titulo": "Salir"},
+      "4": {"icon": "activar", "titulo": "Activar"},
+      "5": {"icon": "cuenta", "titulo": "Ya tengo cuenta"}
     }
   },
   "registro": {
@@ -103,6 +110,14 @@
       "6": "comunidad",
       "0": "menu_principal",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "productos", "titulo": "Ver productos"},
+      "2": {"icon": "pedido", "titulo": "Pedido"},
+      "3": {"icon": "ofertas", "titulo": "Ofertas"},
+      "4": {"icon": "ayuda", "titulo": "Ayuda"},
+      "5": {"icon": "pago", "titulo": "Pago"},
+      "6": {"icon": "comunidad", "titulo": "Comunidad"}
     }
   },
   "catalogo_productos": {
@@ -199,6 +214,11 @@
       "3": "realizar_compra",
       "0": "inicio",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "productos", "titulo": "Ver catálogo"},
+      "2": {"icon": "carrito", "titulo": "Mi carrito"},
+      "3": {"icon": "confirmar", "titulo": "Confirmar compra"}
     }
   },
   "realizar_compra": {
@@ -254,6 +274,14 @@
       "6": "chat_humano",
       "0": "inicio",
       "*": "menu_principal"
+    },
+    "iconos": {
+      "1": {"icon": "cuenta", "titulo": "Iniciar sesión"},
+      "2": {"icon": "productos", "titulo": "Explorar productos"},
+      "3": {"icon": "horarios", "titulo": "Horarios"},
+      "4": {"icon": "pedido", "titulo": "Pedido"},
+      "5": {"icon": "buscar", "titulo": "Buscar información"},
+      "6": {"icon": "soporte", "titulo": "Chat Humano"}
     }
   },
   "metodo_pago": {

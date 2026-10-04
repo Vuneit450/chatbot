@@ -27,16 +27,36 @@ CATEGORY_NODES = {
     "opciones_netflix": "Netflix",
 }
 
+# Para reusar el mismo ícono de catálogo (ver static/icons/catalog/) cuando
+# un producto de este servicio aparece en el carrito o como sugerencia,
+# en vez de un ícono genérico sin relación con lo que de verdad se vendió.
+SERVICIO_ICONS = {
+    "Spotify": "spotify",
+    "YouTube Music": "youtube_music",
+    "Amazon Music": "amazon_music",
+    "Crunchyroll": "crunchyroll",
+    "Amazon Prime Video": "amazon_prime_video",
+    "Netflix": "netflix",
+}
+
 
 def _payload(node_id, lines, options, free_text=False):
     return {"node": node_id, "lines": lines, "options": options, "freeText": free_text}
+
+
+def _tile(value, titulo, icon):
+    return {"value": value, "label": titulo, "icon": icon}
+
+
+def _chip(value):
+    return {"value": value, "label": EMOJI_DIGITS.get(value, value)}
 
 
 def _necesita_cuenta(node_id):
     return _payload(
         node_id,
         ["Para eso primero necesito identificarte. 🙂", "1️⃣ Registrarme", "2️⃣ Ya tengo cuenta"],
-        numbered_options(2),
+        [_tile("1", "Registrarme", "registro"), _tile("2", "Ya tengo cuenta", "cuenta")],
     )
 
 
@@ -65,7 +85,7 @@ def render(node_id, ctx):
         return _payload(
             node_id,
             ["No encontramos ninguna cuenta con ese teléfono. 🤔", "1️⃣ Registrarme", "2️⃣ Intentar de nuevo", "0️⃣ Menú principal"],
-            numbered_options(2, extra=["0"]),
+            [_tile("1", "Registrarme", "registro"), _tile("2", "Intentar de nuevo", "repetir"), _chip("0")],
         )
     if node_id == "mi_cuenta":
         cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
@@ -89,7 +109,13 @@ def _render_menu_principal(cliente):
         "3️⃣ Mi cuenta e historial",
         "0️⃣ Salir",
     ]
-    return _payload("menu_principal", lines, numbered_options(3, extra=["0"]))
+    options = [
+        _tile("1", "Ver catálogo", "productos"),
+        _tile("2", "Mi carrito", "carrito"),
+        _tile("3", "Mi cuenta", "perfil"),
+        _chip("0"),
+    ]
+    return _payload("menu_principal", lines, options)
 
 
 def _render_categoria(node_id, servicio):
@@ -107,7 +133,8 @@ def _render_carrito(node_id, cliente):
     items = db.ver_carrito(cliente["id"])
     if not items:
         lines = ["🛒 Tu carrito está vacío.", "1️⃣ Ver catálogo", "0️⃣ Volver al menú principal"]
-        return _payload(node_id, lines, numbered_options(1, extra=["0"]))
+        options = [_tile("1", "Ver catálogo", "productos"), _chip("0")]
+        return _payload(node_id, lines, options)
     lines = ["🛒 Tu carrito:"]
     lines += [f"{EMOJI_DIGITS[str(i)]} {it['servicio']} — {it['plan']} ({money(it['precio_mxn'])})" for i, it in enumerate(items, 1)]
     total = sum(it["precio_mxn"] for it in items)
@@ -117,7 +144,14 @@ def _render_carrito(node_id, cliente):
         "❌ Toca el número de un producto para quitarlo del carrito",
         "0️⃣ Volver al menú principal",
     ]
-    options = numbered_options(len(items)) + [{"value": "comprar", "label": "✅ Comprar"}, {"value": "0", "label": EMOJI_DIGITS["0"]}]
+    # Cada producto reutiliza el ícono de su propia plataforma (el mismo que
+    # ya se vio en el catálogo), para reconocerlo de un vistazo en vez de
+    # solo un número.
+    options = [
+        _tile(str(i), it["servicio"], SERVICIO_ICONS.get(it["servicio"], "productos"))
+        for i, it in enumerate(items, 1)
+    ]
+    options += [_tile("comprar", "Comprar", "confirmar"), _chip("0")]
     return _payload(node_id, lines, options)
 
 
@@ -127,12 +161,14 @@ def _render_realizar_compra(cliente):
     items = db.ver_carrito(cliente["id"])
     if not items:
         lines = ["Tu carrito está vacío, no hay nada que comprar todavía.", "1️⃣ Ver catálogo", "0️⃣ Menú principal"]
-        return _payload("realizar_compra", lines, numbered_options(1, extra=["0"]))
+        options = [_tile("1", "Ver catálogo", "productos"), _chip("0")]
+        return _payload("realizar_compra", lines, options)
     total = sum(it["precio_mxn"] for it in items)
     lines = ["🧾 Vas a confirmar este pedido:"]
     lines += [f"• {it['servicio']} {it['plan']} — {money(it['precio_mxn'])}" for it in items]
     lines += [f"Total: {money(total)}", "1️⃣ Confirmar compra", "0️⃣ Cancelar"]
-    return _payload("realizar_compra", lines, numbered_options(1, extra=["0"]))
+    options = [_tile("1", "Confirmar compra", "confirmar"), _chip("0")]
+    return _payload("realizar_compra", lines, options)
 
 
 def _render_mi_cuenta(cliente):
@@ -152,9 +188,11 @@ def _render_mi_cuenta(cliente):
             fecha = p["creado_en"][:10]
             lines.append(f"#{p['id']} · {fecha} · {money(p['total_mxn'])} · {items_txt}")
         lines += ["1️⃣ Repetir mi último pedido", "0️⃣ Volver al menú principal"]
+        options = [_tile("1", "Repetir pedido", "repetir"), _chip("0")]
     else:
         lines += ["Todavía no tienes pedidos.", "1️⃣ Ver catálogo", "0️⃣ Volver al menú principal"]
-    return _payload("mi_cuenta", lines, numbered_options(1, extra=["0"]))
+        options = [_tile("1", "Ver catálogo", "productos"), _chip("0")]
+    return _payload("mi_cuenta", lines, options)
 
 
 def _render_producto_agregado(data):
@@ -166,7 +204,8 @@ def _render_producto_agregado(data):
         "2️⃣ Ver mi carrito",
         "0️⃣ Volver al menú principal",
     ]
-    return _payload("producto_agregado", lines, numbered_options(2, extra=["0"]))
+    options = [_tile("1", "Seguir viendo", "productos"), _tile("2", "Ver carrito", "carrito"), _chip("0")]
+    return _payload("producto_agregado", lines, options)
 
 
 def _render_pedido_confirmado(cliente, data):
@@ -181,9 +220,10 @@ def _render_pedido_confirmado(cliente, data):
             "1️⃣ Sí, agrégalo a mi carrito",
             "0️⃣ No, volver al menú principal",
         ]
-        return _payload("pedido_confirmado", lines, numbered_options(1, extra=["0"]))
+        options = [_tile("1", sugerido["servicio"], SERVICIO_ICONS.get(sugerido["servicio"], "productos")), _chip("0")]
+        return _payload("pedido_confirmado", lines, options)
     lines.append("0️⃣ Volver al menú principal")
-    return _payload("pedido_confirmado", lines, numbered_options(0, extra=["0"]))
+    return _payload("pedido_confirmado", lines, [_chip("0")])
 
 
 # ---- advance ----------------------------------------------------------------
