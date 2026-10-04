@@ -19,5 +19,13 @@ module.exports = defineConfig({
     url: 'http://127.0.0.1:5000/',
     reuseExistingServer: !process.env.CI,
     timeout: 20000,
+    env: {
+      // Apunta a un puerto sin nada escuchando: toda compra de la suite
+      // ejercita el aviso a Bolsillo con una falla real de red, para
+      // comprobar que el checkout nunca se rompe por eso (ver
+      // commerce._notificar_bolsillo).
+      BOLSILLO_SYNC_URL: 'http://127.0.0.1:1/api/income',
+      BOLSILLO_SYNC_KEY: 'llave-de-prueba',
+    },
   },
 });

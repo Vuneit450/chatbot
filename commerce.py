@@ -304,8 +304,12 @@ def _notificar_bolsillo(pedido, cliente):
     )
     try:
         urllib.request.urlopen(request, timeout=5)
-    except (urllib.error.URLError, TimeoutError):
-        pass  # Bolsillo no disponible: el pedido ya se confirmó, esto no debe tronar el checkout.
+    except Exception:
+        # Cualquier falla de red (DNS, TLS, conexión rechazada, timeout,
+        # respuesta 4xx/5xx de Bolsillo...) se ignora a propósito: el
+        # pedido ya se confirmó y existe en la base de datos; este aviso
+        # es un extra que nunca debe tronar el checkout del cliente.
+        pass
 
 
 def _advance_realizar_compra(message, cliente_id):

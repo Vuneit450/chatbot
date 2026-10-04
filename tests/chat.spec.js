@@ -231,6 +231,31 @@ test.describe('Bot Oreo', () => {
     await expect(plataformasPeliculas.nth(2)).toContainText('Netflix');
   });
 
+  test('confirmar una compra no se rompe aunque el aviso a Bolsillo falle', async ({ page }) => {
+    // El webServer de esta suite corre con BOLSILLO_SYNC_URL apuntando a un
+    // puerto sin nada escuchando (ver playwright.config.js), a propósito:
+    // bug real encontrado en producción donde un error de red que no era
+    // exactamente urllib.error.URLError (p.ej. uno de TLS) se escapaba del
+    // except de _notificar_bolsillo y tronaba todo el checkout con un 500,
+    // aunque el pedido ya se había guardado. Aquí confirmamos que la
+    // compra se completa con normalidad pese a que ese aviso siempre falla.
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto('/');
+    await registrarCliente(page, { nombre: 'Query' });
+    await send(page, '*');
+    await clickOption(page, 'Ver catálogo');
+    await clickOption(page, 'Música');
+    await clickOption(page, 'Amazon Music'); // un solo plan
+    await clickOption(page, '1️⃣');
+    await clickOption(page, 'Ver carrito');
+    await send(page, 'comprar');
+    await clickOption(page, 'Confirmar compra');
+    await expect(page.locator('.msg.bot').last()).toContainText('confirmado');
+    await expect(page.locator('.msg.bot').last()).not.toContainText('No pude conectar');
+    expect(errors).toEqual([]);
+  });
+
   test('flujo de compra completo: catálogo → carrito → checkout → sugerencia → historial', async ({ page }) => {
     await page.goto('/');
     await registrarCliente(page, { nombre: 'Dana' });
