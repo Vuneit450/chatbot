@@ -18,6 +18,13 @@ Ejecutar en local:
   ignorado por git). En producción, define TURSO_DATABASE_URL y
   TURSO_AUTH_TOKEN (ver render.yaml) para usar Turso.
 
+Pruebas unitarias/integración (pytest, base SQLite temporal):
+  pip install -r requirements-dev.txt
+  python -m pytest
+
+Límites por IP (variables opcionales): RATE_LIMIT_MESSAGES (120/min) y
+RATE_LIMIT_AUTH (10 intentos de identificación / 10 min).
+
 Pruebas end-to-end (Playwright):
   npm install
   npm test
@@ -25,6 +32,7 @@ Pruebas end-to-end (Playwright):
 Estructura:
   chatbot.py          Rutas Flask + motor genérico de respuestas.json
   commerce.py          Nodos dinámicos: personalización, carrito, checkout
+  ratelimit.py          Limitador de peticiones por IP en memoria
   db.py                 Capa de datos (clientes, catálogo, carrito, pedidos)
   formatting.py         Utilidades de formato compartidas
   respuestas.json       Árbol de nodos del menú (texto, opciones, captura)

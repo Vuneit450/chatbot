@@ -160,6 +160,9 @@ test.describe('Bot Oreo', () => {
 
   test('un mensaje vacío no se envía', async ({ page }) => {
     await page.goto('/');
+    // Esperar al menú inicial: sin esto, el conteo corría contra la carga
+    // asíncrona de /api/state y la prueba fallaba de forma intermitente.
+    await expect(page.locator('.msg.bot').first()).toBeVisible();
     const before = await page.locator('.msg').count();
     await page.locator('.send-btn').click();
     await expect(page.locator('.msg')).toHaveCount(before);

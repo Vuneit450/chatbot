@@ -8,6 +8,7 @@ cuando no aplica (regresa None) se usa el árbol estático como respaldo.
 """
 
 import json
+import logging
 import os
 import re
 import urllib.error
@@ -15,6 +16,8 @@ import urllib.request
 
 import db
 from formatting import EMOJI_DIGITS, clean_phone, money, numbered_options
+
+log = logging.getLogger(__name__)
 
 BOLSILLO_SYNC_URL = os.environ.get("BOLSILLO_SYNC_URL")
 BOLSILLO_SYNC_KEY = os.environ.get("BOLSILLO_SYNC_KEY")
@@ -394,12 +397,14 @@ def _notificar_bolsillo(pedido, cliente):
     )
     try:
         urllib.request.urlopen(request, timeout=5)
-    except Exception:
+    except Exception as exc:
         # Cualquier falla de red (DNS, TLS, conexión rechazada, timeout,
         # respuesta 4xx/5xx de Bolsillo...) se ignora a propósito: el
         # pedido ya se confirmó y existe en la base de datos; este aviso
-        # es un extra que nunca debe tronar el checkout del cliente.
-        pass
+        # es un extra que nunca debe tronar el checkout del cliente. Se
+        # deja en el log (sin la llave) para poder detectar ventas que no
+        # llegaron a Bolsillo.
+        log.warning("No se pudo avisar a Bolsillo del pedido %s: %s", pedido.get("pedido_id"), type(exc).__name__)
 
 
 def _advance_realizar_compra(message, cliente_id):

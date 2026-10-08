@@ -90,8 +90,8 @@ def test_recibo_escapa_html_del_nombre(client):
     registrar(client, nombre="<script>alert(1)</script>")
     say(client, "*")
     for m in ("1", "1", "1", "1", "2", "comprar", "1"):
-        res, p = say(client, m)
-    token = next(l for l in p["lines"] if "/recibo/" in l).split("(/recibo/")[1].rstrip(")")
+        _, p = say(client, m)
+    token = next(linea for linea in p["lines"] if "/recibo/" in linea).split("(/recibo/")[1].rstrip(")")
     html = client.get(f"/recibo/{token}").get_data(as_text=True)
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
@@ -146,3 +146,28 @@ def test_nodos_dinamicos_tapan_al_arbol_estatico():
     for nodo in ("carrito", "realizar_compra", "mi_cuenta", "identificarme"):
         assert nodo not in chatbot.NODES
         assert commerce.render(nodo, {"cliente_id": None, "data": {}}) is not None
+
+
+def test_aviso_a_bolsillo_manda_el_total_real_y_no_rompe_el_checkout(client, monkeypatch, caplog):
+    import json as _json
+
+    import commerce
+
+    enviados = []
+
+    def falso_urlopen(req, timeout=None):
+        enviados.append((_json.loads(req.data), dict(req.header_items())))
+        raise OSError("sin red")
+
+    monkeypatch.setattr(commerce, "BOLSILLO_SYNC_URL", "http://bolsillo.test/api/income")
+    monkeypatch.setattr(commerce, "BOLSILLO_SYNC_KEY", "k-secreta")
+    monkeypatch.setattr(commerce.urllib.request, "urlopen", falso_urlopen)
+    registrar(client)
+    for m in ("*", "1", "1", "1", "3", "2", "comprar"):
+        say(client, m)
+    with caplog.at_level("WARNING"):
+        _, p = say(client, "1")
+    assert p["node"] == "pedido_confirmado"
+    assert enviados[0][0]["amount"] == 80
+    assert "k-secreta" not in caplog.text
+    assert db.historial_pedidos(1)[0]["total_mxn"] == 80
