@@ -33,6 +33,11 @@ def valid_email(raw):
     return len(value) <= 120 and bool(_EMAIL_RE.match(value))
 
 
+def valid_pin(raw):
+    """PIN de 4 a 6 dígitos ASCII (str.isdigit aceptaría '²' o '٣')."""
+    return bool(re.fullmatch(r"[0-9]{4,6}", raw or ""))
+
+
 def valid_usuario(raw):
     """Usuario de 3 a 32 caracteres, sin espacios."""
     value = (raw or "").strip()

@@ -126,12 +126,12 @@ def advance(current_node, raw_message, ctx):
     if "*" in options:
         if capture_key == "telefono":
             # El teléfono es la llave única de cada cliente (ver
-            # db.upsert_cliente): sin validar formato, un typo cualquiera
-            # podría chocar con el de otra persona y pisar su perfil.
+            # db.crear_cliente): sin validar formato, un typo cualquiera
+            # podría chocar con el de otra persona.
             telefono = clean_phone(message)
             if len(telefono) != 10:
                 return current_node, {"data": {"_telefono_invalido": True}}
-            captured = {"telefono": telefono, "_telefono_invalido": False}
+            captured = {"telefono": telefono, "_telefono_invalido": False, "_pin_modo": "registro", "_pin_error": None}
         else:
             valido = {"correo": valid_email, "usuario": valid_usuario}.get(capture_key)
             if valido and not valido(message):
@@ -139,15 +139,6 @@ def advance(current_node, raw_message, ctx):
             captured = {capture_key: message[:MAX_INPUT_LEN]} if capture_key else {}
             captured["_campo_invalido"] = None
         next_node = options["*"]
-        if next_node == "registro_confirmacion":
-            # Último paso del registro: ya tenemos los 4 campos, se crea
-            # (o actualiza) el cliente y esta sesión queda identificada.
-            data = dict(ctx.get("data", {}))
-            data.update(captured)
-            cliente_id = db.upsert_cliente(
-                data.get("nombre", ""), data.get("correo", ""), data.get("usuario", ""), data.get("telefono", "")
-            )
-            return next_node, {"data": captured, "cliente_id": cliente_id}
         return next_node, {"data": captured}
 
     # Nodo sin salida (p.ej. "salir") y el mensaje no matchea ningún comando
@@ -176,6 +167,7 @@ if IS_PRODUCTION or os.environ.get("TRUST_PROXY") == "1":
     # Detrás del proxy de Render, remote_addr sería el del proxy: sin esto
     # todos los usuarios compartirían un mismo contador de límite.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+commerce.configure(app.secret_key)
 db.init_db()
 
 # Límites por IP. Los valores se pueden subir por entorno (la suite
@@ -184,7 +176,7 @@ message_limiter = RateLimiter(int(os.environ.get("RATE_LIMIT_MESSAGES", "120")),
 # Nodos donde un teléfono funciona como contraseña (identificarse o
 # registrarse con un teléfono existente): frena probar números al azar.
 auth_limiter = RateLimiter(int(os.environ.get("RATE_LIMIT_AUTH", "10")), 600)
-AUTH_NODES = ("identificarme", "registro_usuario")
+AUTH_NODES = ("identificarme", "identificarme_pin", "registro_usuario")
 
 
 def reset_rate_limits():
@@ -211,7 +203,10 @@ def _security_headers(resp):
 
 
 def _ctx():
-    return {"cliente_id": session.get("cliente_id"), "data": session.get("data", {})}
+    # Solo vale un cliente_id que se ganó con PIN en esta sesión: las
+    # cookies anteriores a los PIN (solo teléfono) dejan de identificar.
+    cliente_id = session.get("cliente_id") if session.get("pin_ok") else None
+    return {"cliente_id": cliente_id, "data": session.get("data", {})}
 
 
 def _ensure_conversation():
@@ -307,9 +302,11 @@ def api_message():
             # "Salir" cierra la sesión del cliente: en un dispositivo
             # compartido el siguiente usuario no debe heredar la cuenta.
             session.pop("cliente_id", None)
+            session.pop("pin_ok", None)
             session["data"] = {}
         if "cliente_id" in updates:
             session["cliente_id"] = updates["cliente_id"]
+            session["pin_ok"] = True
             session.permanent = True
         return jsonify(node_payload(next_node, _ctx()))
     except Exception:

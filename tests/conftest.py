@@ -42,9 +42,14 @@ def say(client, message):
     return res, res.get_json()
 
 
-def registrar(client, nombre="Ana", correo="ana@x.mx", usuario="ana", telefono="5512345678"):
+PIN = "1234"
+
+
+def registrar(client, nombre="Ana", correo="ana@x.mx", usuario="ana", telefono="5512345678", pin=PIN):
     client.post("/api/start")
     say(client, "1")  # Registro
     for valor in (nombre, correo, usuario, telefono):
         say(client, valor)
+    say(client, pin)
+    say(client, pin)
     return telefono

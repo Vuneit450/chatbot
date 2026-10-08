@@ -6,7 +6,7 @@ import db
 
 
 def _cliente(tel="5511111111", nombre="Ana"):
-    return db.upsert_cliente(nombre, f"{nombre}@x.mx", nombre.lower(), tel)
+    return db.crear_cliente(nombre, f"{nombre}@x.mx", nombre.lower(), tel, "1234")[0]
 
 
 def _producto(servicio, plan=None):
@@ -119,19 +119,21 @@ def test_token_de_recibo_no_es_adivinable_y_desconocido_da_none():
 def test_sql_injection_en_telefono_y_datos_se_trata_como_texto():
     malo = "5500000000'; DROP TABLE clientes; --"
     assert db.find_cliente_by_telefono(malo) is None
-    cid = db.upsert_cliente("Robert'); DROP TABLE clientes;--", "a@b.c", "x", "5533333333")
+    cid, _ = db.crear_cliente("Robert'); DROP TABLE clientes;--", "a@b.c", "x", "5533333333", "1234")
     assert db.find_cliente_by_id(cid)["nombre"].startswith("Robert'")
     assert db.find_cliente_by_telefono("5533333333")["id"] == cid
 
 
 def test_re_registro_con_telefono_existente_no_pisa_los_datos_del_dueno():
-    """Registrarse con el teléfono de otra persona no debe reescribir su
-    nombre/correo/usuario (nadie ha probado ser el dueño)."""
-    cid = db.upsert_cliente("Ana", "ana@x.mx", "ana", "5544444444")
-    cid2 = db.upsert_cliente("Intruso", "i@x.mx", "intruso", "5544444444")
-    assert cid2 == cid
+    """Registrarse con el teléfono de otra persona no reescribe su perfil
+    ni la identifica: ya tiene PIN."""
+    cid, _ = db.crear_cliente("Ana", "ana@x.mx", "ana", "5544444444", "1234")
+    cid2, estado = db.crear_cliente("Intruso", "i@x.mx", "intruso", "5544444444", "9999")
+    assert (cid2, estado) == (None, "existe")
     c = db.find_cliente_by_id(cid)
     assert (c["nombre"], c["correo"], c["usuario"]) == ("Ana", "ana@x.mx", "ana")
+    assert db.verificar_pin("5544444444", "9999") is None
+    assert db.verificar_pin("5544444444", "1234")["id"] == cid
 
 
 def test_actualizar_cliente_rechaza_telefono_de_otro_y_permite_el_propio():

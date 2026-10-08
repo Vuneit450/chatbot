@@ -15,11 +15,25 @@ from pathlib import Path
 from typing import Any
 
 import libsql
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
 TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
 TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
 LOCAL_DB_PATH = os.environ.get("LOCAL_DB_PATH", str(BASE_DIR / "bot_oreo.db"))
+
+# Bloqueo por cliente tras PIN incorrectos seguidos (además del límite por IP).
+MAX_INTENTOS_PIN = 5
+BLOQUEO_SEGUNDOS = 15 * 60
+# Hash de relleno: se compara contra él cuando el teléfono no existe o la
+# cuenta está bloqueada, para que el tiempo de respuesta no delate cuál fue el caso.
+_HASH_RELLENO = generate_password_hash("relleno-sin-uso")
+
+
+def now() -> int:
+    """Reloj en segundos epoch (aislado para poder simular el paso del tiempo)."""
+    return int(time.time())
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS clientes (
@@ -28,7 +42,10 @@ CREATE TABLE IF NOT EXISTS clientes (
   correo TEXT,
   usuario TEXT,
   telefono TEXT UNIQUE NOT NULL,
-  creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  pin_hash TEXT,
+  intentos_pin INTEGER NOT NULL DEFAULT 0,
+  bloqueado_hasta INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS productos (
@@ -88,7 +105,12 @@ CATALOGO_SEED = [
 
 def get_connection() -> Any:
     if not TURSO_URL:
-        return libsql.connect(LOCAL_DB_PATH)
+        conn = libsql.connect(LOCAL_DB_PATH)
+        # Peticiones concurrentes (gunicorn/hilos, Playwright en paralelo)
+        # esperan el candado de escritura en vez de fallar con "database is locked".
+        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA journal_mode = WAL")  # lectores y escritor no se bloquean entre sí
+        return conn
     # Turso puede tardar en la primera conexión tras estar inactivo; un
     # solo reintento evita que un bache pasajero tumbe la petición.
     last_error = None
@@ -111,13 +133,19 @@ def init_db() -> None:
     try:
         conn.executescript(SCHEMA)
         conn.commit()
-        # Migración ligera para bases ya desplegadas antes de que `token`
-        # existiera en pedidos (CREATE TABLE IF NOT EXISTS no altera tablas
-        # que ya existen).
-        columnas = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
-        if "token" not in columnas:
-            conn.execute("ALTER TABLE pedidos ADD COLUMN token TEXT")
-            conn.commit()
+        # Migración ligera para bases ya desplegadas (CREATE TABLE IF NOT
+        # EXISTS no altera tablas existentes). PRAGMA table_info funciona
+        # igual en SQLite local y en Turso.
+        for tabla, columna, ddl in (
+            ("pedidos", "token", "token TEXT"),
+            ("clientes", "pin_hash", "pin_hash TEXT"),
+            ("clientes", "intentos_pin", "intentos_pin INTEGER NOT NULL DEFAULT 0"),
+            ("clientes", "bloqueado_hasta", "bloqueado_hasta INTEGER"),
+        ):
+            columnas = [r[1] for r in conn.execute(f"PRAGMA table_info({tabla})").fetchall()]
+            if columna not in columnas:
+                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {ddl}")
+                conn.commit()
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM productos")
         if cur.fetchone()[0] == 0:
@@ -163,27 +191,131 @@ def find_cliente_by_id(cliente_id: int | None) -> dict[str, Any] | None:
         conn.close()
 
 
-def upsert_cliente(nombre: str, correo: str, usuario: str, telefono: str) -> int:
-    """Crea el cliente o, si el teléfono ya existía, regresa el existente
-    SIN modificar sus datos: el teléfono es la única credencial del bot, y
-    quien lo teclea no ha demostrado ser su dueño, así que no puede
-    reescribirle nombre/correo/usuario (para eso está "Actualizar
-    información", que exige estar ya identificado)."""
+def crear_cliente(nombre: str, correo: str, usuario: str, telefono: str, pin: str) -> tuple[int | None, str]:
+    """Registra un cliente nuevo con su PIN (solo se guarda el hash).
+
+    Regresa (cliente_id, estado):
+    - "creado": cliente nuevo.
+    - "legacy": el teléfono era de un cliente anterior al PIN y aún no tenía
+      uno; se le fija este PIN SIN tocar nombre/correo/usuario (riesgo
+      residual documentado en el README).
+    - "existe": el teléfono ya tiene PIN; no se hace nada (cliente_id None).
+    """
+    pin_hash = generate_password_hash(pin)  # antes de abrir la conexión (~100 ms)
     conn = get_connection()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM clientes WHERE telefono = ?", (telefono,))
+        cur.execute("SELECT id, pin_hash FROM clientes WHERE telefono = ?", (telefono,))
         existing = cur.fetchone()
         if existing:
-            cliente_id = existing[0]
-        else:
+            if existing[1]:
+                return None, "existe"
             conn.execute(
-                "INSERT INTO clientes (nombre, correo, usuario, telefono) VALUES (?, ?, ?, ?)",
-                (nombre, correo, usuario, telefono),
+                "UPDATE clientes SET pin_hash = ?, intentos_pin = 0, bloqueado_hasta = NULL WHERE id = ?",
+                (pin_hash, existing[0]),
             )
-            cliente_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.commit()
+            return existing[0], "legacy"
+        conn.execute(
+            "INSERT INTO clientes (nombre, correo, usuario, telefono, pin_hash) VALUES (?, ?, ?, ?, ?)",
+            (nombre, correo, usuario, telefono, pin_hash),
+        )
+        cliente_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit()
-        return cliente_id
+        return cliente_id, "creado"
+    finally:
+        conn.close()
+
+
+def estado_pin(telefono: str) -> bool | None:
+    """None si el teléfono no existe; False si existe pero sin PIN (cliente
+    anterior a esta función); True si ya tiene PIN."""
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT pin_hash FROM clientes WHERE telefono = ?", (telefono,)).fetchone()
+        return None if row is None else bool(row[0])
+    finally:
+        conn.close()
+
+
+def _verificar_pin(columna: str, valor: Any, pin: str) -> dict[str, Any] | None:
+    """Verifica el PIN con comparación de tiempo constante y aplica el
+    bloqueo por cliente. `columna` es siempre una constante interna.
+
+    La lectura y las escrituras usan conexiones distintas y el hash se
+    calcula entre ambas: así no se mantiene una lectura abierta durante
+    ~100 ms de scrypt, lo que con SQLite haría fallar con "database is
+    locked" a la escritura que sigue si otra petición escribió mientras."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, nombre, correo, usuario, telefono, pin_hash, bloqueado_hasta, intentos_pin FROM clientes WHERE {columna} = ?",
+            (valor,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    row = rows[0] if rows else None
+    if row is None or not row[5] or (row[6] or 0) > now():
+        check_password_hash(_HASH_RELLENO, pin)  # mismo costo que un intento real
+        return None
+    acierto = check_password_hash(row[5], pin)
+    if acierto and not (row[7] or row[6]):
+        return _row_to_cliente(row)  # camino común: sin escrituras
+    conn = get_connection()
+    try:
+        if acierto:
+            conn.execute("UPDATE clientes SET intentos_pin = 0, bloqueado_hasta = NULL WHERE id = ?", (row[0],))
+            conn.commit()
+            return _row_to_cliente(row)
+        conn.execute("UPDATE clientes SET intentos_pin = intentos_pin + 1 WHERE id = ?", (row[0],))
+        conn.execute(
+            "UPDATE clientes SET intentos_pin = 0, bloqueado_hasta = ? WHERE id = ? AND intentos_pin >= ?",
+            (now() + BLOQUEO_SEGUNDOS, row[0], MAX_INTENTOS_PIN),
+        )
+        conn.commit()
+        return None
+    finally:
+        conn.close()
+
+
+def verificar_pin(telefono: str, pin: str) -> dict[str, Any] | None:
+    """Cliente si teléfono+PIN son correctos y la cuenta no está bloqueada;
+    None en cualquier otro caso (sin distinguir cuál: no enumera teléfonos)."""
+    return _verificar_pin("telefono", telefono, pin)
+
+
+def verificar_pin_cliente(cliente_id: int, pin: str) -> bool:
+    """Reconfirma el PIN de un cliente ya identificado (cambios sensibles).
+    Comparte contador y bloqueo con verificar_pin."""
+    return _verificar_pin("id", cliente_id, pin) is not None
+
+
+def fijar_pin_legacy(telefono: str, pin: str) -> dict[str, Any] | None:
+    """Fija el PIN de un cliente que aún no tiene (solo si sigue sin PIN)."""
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            "UPDATE clientes SET pin_hash = ?, intentos_pin = 0, bloqueado_hasta = NULL WHERE telefono = ? AND pin_hash IS NULL",
+            (generate_password_hash(pin), telefono),
+        )
+        conn.commit()
+        if cur.rowcount != 1:
+            return None
+    finally:
+        conn.close()
+    return find_cliente_by_telefono(telefono)
+
+
+def cambiar_pin(cliente_id: int, pin: str) -> None:
+    conn = get_connection()
+    try:
+        conn.execute(
+            "UPDATE clientes SET pin_hash = ?, intentos_pin = 0, bloqueado_hasta = NULL WHERE id = ?",
+            (generate_password_hash(pin), cliente_id),
+        )
+        conn.commit()
     finally:
         conn.close()
 

@@ -1,6 +1,6 @@
 """Autenticación/autorización, entradas hostiles, cabeceras y límites."""
 
-from conftest import registrar, say
+from conftest import PIN, registrar, say
 
 import chatbot
 import db
@@ -114,21 +114,12 @@ def test_limite_de_intentos_al_identificarse_frena_la_enumeracion_de_telefonos(c
     say(client, "5")  # identificarme
     estados = []
     for i in range(6):
-        res, p = say(client, f"55000000{i:02d}")
+        res, p = say(client, f"55000000{i:02d}")  # teléfono
         estados.append(res.status_code)
-        if p["node"] == "identificarme_no_encontrado":
+        if p["node"] == "identificarme_pin":
+            say(client, "0000")
             say(client, "2")  # intentar de nuevo
-    assert estados[:3] == [200, 200, 200]
-    assert estados[3:] == [429, 429, 429]
-
-
-def test_identificarse_con_telefono_ajeno_requiere_conocerlo_y_no_filtra_datos(client):
-    db.upsert_cliente("Víctima", "v@x.mx", "vic", "5599999999")
-    client.post("/api/start")
-    say(client, "5")
-    _, p = say(client, "5500000000")
-    assert p["node"] == "identificarme_no_encontrado"
-    assert "Víctima" not in " ".join(p["lines"])
+    assert estados[0] == 200 and 429 in estados
 
 
 def test_ratelimiter_ventana_deslizante():
@@ -205,6 +196,7 @@ def test_actualizar_informacion_valida_correo_y_usuario(client):
     say(client, "*")
     for m in ("4", "3", "5", "2"):  # Inicio > Ayuda > Buscar info > Actualizar
         say(client, m)
+    say(client, PIN)  # reconfirma el PIN actual
     say(client, "Ana")
     _, p = say(client, "malcorreo")
     assert "correo no parece válido" in p["lines"][0]

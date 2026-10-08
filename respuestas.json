@@ -68,7 +68,24 @@
     "categoria": "registro",
     "captura": "telefono",
     "opciones": {
-      "*": "registro_confirmacion"
+      "*": "pin_crear"
+    }
+  },
+  "registro_existente": {
+    "texto": [
+      "Ese teléfono ya tiene una cuenta con PIN. 🔐",
+      "1️⃣ Ya tengo cuenta (iniciar sesión)",
+      "0️⃣ Menú principal"
+    ],
+    "descripcion": "El teléfono del registro ya pertenece a un cliente con PIN.",
+    "categoria": "registro",
+    "iconos": {
+      "1": { "titulo": "Ya tengo cuenta", "icon": "cuenta" }
+    },
+    "opciones": {
+      "1": "identificarme",
+      "0": "menu_principal",
+      "*": "menu_principal"
     }
   },
   "registro_confirmacion": {

@@ -7,6 +7,8 @@ respuestas.json; este módulo se consulta primero para cada nodo, y solo
 cuando no aplica (regresa None) se usa el árbol estático como respaldo.
 """
 
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -22,6 +24,7 @@ from formatting import (
     money,
     numbered_options,
     valid_email,
+    valid_pin,
     valid_usuario,
 )
 
@@ -58,8 +61,32 @@ def _es_indice(message, maximo):
     return bool(re.fullmatch(r"[0-9]{1,6}", message)) and 1 <= int(message) <= maximo
 
 
-def _payload(node_id, lines, options, free_text=False):
-    return {"node": node_id, "lines": lines, "options": options, "freeText": free_text}
+def _payload(node_id, lines, options, free_text=False, secret=False):
+    payload = {"node": node_id, "lines": lines, "options": options, "freeText": free_text}
+    if secret:
+        # El frontend no pinta ni guarda en el historial lo que se teclea
+        # en estos nodos (PIN).
+        payload["secret"] = True
+    return payload
+
+
+# Llave para guardar en la cookie de sesión una huella del PIN a medio
+# confirmar (ver _huella_pin). La fija chatbot.py con su SECRET_KEY.
+_PIN_KEY = b""
+PIN_VIGENCIA_SEGUNDOS = 10 * 60  # cuánto vale haber reconfirmado el PIN en "Actualizar información"
+
+
+def configure(secret_key):
+    global _PIN_KEY
+    _PIN_KEY = secret_key.encode() if isinstance(secret_key, str) else secret_key
+
+
+def _huella_pin(pin):
+    """HMAC con llave del servidor del PIN tecleado, para compararlo contra
+    su confirmación sin guardarlo en claro. A diferencia de un hash simple,
+    quien lea la cookie (firmada, no cifrada) no puede recuperar los 10^4
+    PIN posibles por fuerza bruta sin la llave."""
+    return hmac.new(_PIN_KEY, b"pin-tmp:" + pin.encode(), hashlib.sha256).hexdigest()
 
 
 def _tile(value, titulo, icon):
@@ -100,11 +127,28 @@ def render(node_id, ctx):
         return _render_realizar_compra(cliente)
     if node_id == "identificarme":
         return _payload(node_id, ["Escribe el teléfono con el que te registraste:"], [], free_text=True)
+    if node_id == "identificarme_pin":
+        return _payload(node_id, ["🔐 Escribe tu PIN:"], [], free_text=True, secret=True)
+    if node_id == "pin_crear":
+        return _render_pin_crear(ctx.get("data", {}))
+    if node_id == "pin_confirmar":
+        return _payload(node_id, ["Escribe de nuevo tu PIN para confirmarlo:"], [], free_text=True, secret=True)
+    if node_id == "pin_actual":
+        cliente = db.find_cliente_by_id(ctx.get("cliente_id"))
+        if not cliente:
+            return _necesita_cuenta(node_id)
+        lines = ["🔐 Para cambiar tu PIN, escribe primero tu PIN actual:"]
+        if ctx.get("data", {}).get("_pin_error") == "actual":
+            lines = [AVISO_PIN_ACTUAL] + lines
+        return _payload(node_id, lines, [], free_text=True, secret=True)
+    if node_id == "pin_cambiado":
+        return _payload(node_id, ["✅ Tu PIN quedó actualizado.", "0️⃣ Volver al menú principal"], [_chip("0")])
     if node_id == "identificarme_no_encontrado":
         return _payload(
             node_id,
             [
-                "No encontramos ninguna cuenta con ese teléfono. 🤔",
+                "No pudimos identificarte con ese teléfono y PIN. 🤔",
+                "Por seguridad, tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos.",
                 "1️⃣ Registrarme",
                 "2️⃣ Intentar de nuevo",
                 "0️⃣ Menú principal",
@@ -223,12 +267,29 @@ def _render_mi_cuenta(cliente):
             items_txt = ", ".join(f"{it['servicio']} {it['plan']}" for it in p["items"])
             fecha = p["creado_en"][:10]
             lines.append(f"#{p['id']} · {fecha} · {money(p['total_mxn'])} · {items_txt}")
-        lines += ["1️⃣ Repetir mi último pedido", "0️⃣ Volver al menú principal"]
-        options = [_tile("1", "Repetir pedido", "repetir"), _chip("0")]
+        lines += ["1️⃣ Repetir mi último pedido", "2️⃣ Cambiar mi PIN", "0️⃣ Volver al menú principal"]
+        options = [_tile("1", "Repetir pedido", "repetir"), _tile("2", "Cambiar mi PIN", "cuenta"), _chip("0")]
     else:
-        lines += ["Todavía no tienes pedidos.", "1️⃣ Ver catálogo", "0️⃣ Volver al menú principal"]
-        options = [_tile("1", "Ver catálogo", "productos"), _chip("0")]
+        lines += ["Todavía no tienes pedidos.", "1️⃣ Ver catálogo", "2️⃣ Cambiar mi PIN", "0️⃣ Volver al menú principal"]
+        options = [_tile("1", "Ver catálogo", "productos"), _tile("2", "Cambiar mi PIN", "cuenta"), _chip("0")]
     return _payload("mi_cuenta", lines, options)
+
+
+AVISO_PIN_ACTUAL = "⚠️ PIN incorrecto (o cuenta bloqueada temporalmente). Intenta de nuevo."
+AVISO_PIN_FORMATO = "⚠️ El PIN debe tener de 4 a 6 dígitos, solo números."
+AVISO_PIN_DISTINTO = "⚠️ Los PIN no coinciden. Elige uno de nuevo:"
+
+
+def _render_pin_crear(data):
+    modo = data.get("_pin_modo")
+    intro = {
+        "registro": "🔐 Elige un PIN de 4 a 6 dígitos. Te lo pediremos cada vez que inicies sesión:",
+        "legacy": "🔐 Tu cuenta es anterior al PIN. Para protegerla, elige un PIN de 4 a 6 dígitos:",
+        "cambio": "🔐 Escribe tu nuevo PIN (4 a 6 dígitos):",
+    }.get(modo, "🔐 Elige un PIN de 4 a 6 dígitos:")
+    error = data.get("_pin_error")
+    aviso = {"formato": AVISO_PIN_FORMATO, "distinto": AVISO_PIN_DISTINTO}.get(error)
+    return _payload("pin_crear", ([aviso] if aviso else []) + [intro], [], free_text=True, secret=True)
 
 
 # Pasos del flujo de "Actualizar información" (buscar_informacion → "2"):
@@ -238,7 +299,19 @@ def _render_mi_cuenta(cliente):
 ACTUALIZAR_PASOS = ["nombre", "correo", "usuario", "telefono"]
 
 
+def _pin_vigente(data):
+    desde = data.get("_actualizar_pin_ok")
+    return isinstance(desde, int) and 0 <= db.now() - desde < PIN_VIGENCIA_SEGUNDOS
+
+
 def _render_actualizar(cliente, data):
+    if not _pin_vigente(data):
+        # Cambiar datos de la cuenta (correo, teléfono...) exige reconfirmar
+        # el PIN, aunque la sesión ya esté identificada.
+        lines = ["🔐 Para modificar tu información, escribe tu PIN actual:"]
+        if data.get("_actualizar_error") == "pin":
+            lines = [AVISO_PIN_ACTUAL] + lines
+        return _payload("actualizar_informacion", lines, [], free_text=True, secret=True)
     paso = data.get("_actualizar_paso")
     if paso not in ACTUALIZAR_PASOS:
         paso = "nombre"
@@ -261,6 +334,17 @@ def _render_actualizar(cliente, data):
 
 
 def _advance_actualizar(message, cliente_id, data):
+    if not _pin_vigente(data):
+        if db.verificar_pin_cliente(cliente_id, message):
+            return "actualizar_informacion", {
+                "data": {
+                    "_actualizar_pin_ok": db.now(),
+                    "_actualizar_paso": "nombre",
+                    "_actualizar_datos": {},
+                    "_actualizar_error": None,
+                }
+            }
+        return "actualizar_informacion", {"data": {"_actualizar_error": "pin"}}
     paso = data.get("_actualizar_paso")
     if paso not in ACTUALIZAR_PASOS:
         paso = "nombre"
@@ -301,7 +385,12 @@ def _advance_actualizar(message, cliente_id, data):
             "data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": error}
         }
     return "actualizar_confirmacion", {
-        "data": {"_actualizar_paso": None, "_actualizar_datos": {}, "_actualizar_error": None}
+        "data": {
+            "_actualizar_paso": None,
+            "_actualizar_datos": {},
+            "_actualizar_error": None,
+            "_actualizar_pin_ok": None,
+        }
     }
 
 
@@ -368,6 +457,16 @@ def advance(node_id, message, ctx):
         return _advance_realizar_compra(message, cliente_id)
     if node_id == "identificarme":
         return _advance_identificarme(message)
+    if node_id == "identificarme_pin":
+        return _advance_identificarme_pin(message, ctx.get("data", {}))
+    if node_id == "pin_crear":
+        return _advance_pin_crear(message, ctx.get("data", {}))
+    if node_id == "pin_confirmar":
+        return _advance_pin_confirmar(message, cliente_id, ctx.get("data", {}))
+    if node_id == "pin_actual":
+        return _advance_pin_actual(message, cliente_id)
+    if node_id == "pin_cambiado":
+        return "menu_principal", {}
     if node_id == "identificarme_no_encontrado":
         mapping = {"1": "registro", "2": "identificarme"}
         return mapping.get(message, "menu_principal"), {}
@@ -463,10 +562,67 @@ def _advance_realizar_compra(message, cliente_id):
 
 
 def _advance_identificarme(message):
-    cliente = db.find_cliente_by_telefono(clean_phone(message))
+    telefono = clean_phone(message)
+    if db.estado_pin(telefono) is False:
+        # Cliente anterior a los PIN: crea uno antes de ver cualquier dato.
+        return "pin_crear", {"data": {"_login_tel": telefono, "_pin_modo": "legacy", "_pin_error": None}}
+    # Exista o no el teléfono, el siguiente paso es el mismo (no enumera).
+    return "identificarme_pin", {"data": {"_login_tel": telefono}}
+
+
+def _advance_identificarme_pin(message, data):
+    telefono = data.get("_login_tel")
+    if not telefono:
+        return "identificarme", {}
+    cliente = db.verificar_pin(telefono, message)
     if cliente:
-        return "menu_principal", {"cliente_id": cliente["id"]}
-    return "identificarme_no_encontrado", {}
+        return "menu_principal", {"cliente_id": cliente["id"], "data": {"_login_tel": None}}
+    return "identificarme_no_encontrado", {"data": {"_login_tel": None}}
+
+
+def _advance_pin_crear(message, data):
+    if not valid_pin(message):
+        return "pin_crear", {"data": {"_pin_error": "formato"}}
+    return "pin_confirmar", {"data": {"_pin_tmp": _huella_pin(message), "_pin_error": None}}
+
+
+def _advance_pin_confirmar(message, cliente_id, data):
+    tmp = data.get("_pin_tmp") or ""
+    if not valid_pin(message) or not hmac.compare_digest(_huella_pin(message), tmp):
+        return "pin_crear", {"data": {"_pin_tmp": None, "_pin_error": "distinto"}}
+    limpiar = {"_pin_tmp": None, "_pin_error": None, "_pin_modo": None}
+    modo = data.get("_pin_modo")
+    if modo == "cambio":
+        if not cliente_id:
+            return "pin_actual", {"data": limpiar}
+        db.cambiar_pin(cliente_id, message)
+        return "pin_cambiado", {"data": limpiar}
+    if modo == "legacy":
+        cliente = db.fijar_pin_legacy(data.get("_login_tel", ""), message)
+        if not cliente:
+            return "identificarme_no_encontrado", {"data": limpiar}
+        return "menu_principal", {"cliente_id": cliente["id"], "data": {**limpiar, "_login_tel": None}}
+    if modo == "registro":
+        cliente_id, estado = db.crear_cliente(
+            data.get("nombre", ""),
+            data.get("correo", ""),
+            data.get("usuario", ""),
+            data.get("telefono", ""),
+            message,
+        )
+        if estado == "existe":
+            return "registro_existente", {"data": limpiar}
+        return "registro_confirmacion", {"cliente_id": cliente_id, "data": limpiar}
+    return "menu_principal", {"data": limpiar}
+
+
+def _advance_pin_actual(message, cliente_id):
+    if not cliente_id:
+        mapping = {"1": "registro", "2": "identificarme"}
+        return mapping.get(message, "pin_actual"), {}
+    if db.verificar_pin_cliente(cliente_id, message):
+        return "pin_crear", {"data": {"_pin_modo": "cambio", "_pin_error": None}}
+    return "pin_actual", {"data": {"_pin_error": "actual"}}
 
 
 def _advance_mi_cuenta(message, cliente_id):
@@ -477,6 +633,8 @@ def _advance_mi_cuenta(message, cliente_id):
                 db.agregar_al_carrito(cliente_id, item["producto_id"])
             return "carrito", {}
         return "catalogo_productos", {}
+    if message == "2":
+        return "pin_actual", {"data": {"_pin_error": None}}
     return "menu_principal", {}
 
 
