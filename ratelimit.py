@@ -5,22 +5,25 @@ free): frena a alguien que prueba teléfonos al azar contra "Ya tengo
 cuenta" o que inunda el bot. Si algún día hay varios procesos/instancias,
 el contador sería por proceso y habría que moverlo a Redis/Turso."""
 
+from __future__ import annotations
+
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 
 MAX_KEYS = 10000  # tope de memoria: evita que IPs únicas llenen el diccionario
 
 
 class RateLimiter:
-    def __init__(self, limit, window_seconds, clock=time.monotonic):
+    def __init__(self, limit: int, window_seconds: float, clock: Callable[[], float] = time.monotonic) -> None:
         self.limit = limit
         self.window = window_seconds
         self._clock = clock
         self._hits = {}
         self._lock = threading.Lock()
 
-    def hit(self, key):
+    def hit(self, key: str) -> bool:
         """Registra un intento de `key`. True si está dentro del límite."""
         now = self._clock()
         with self._lock:
@@ -38,6 +41,6 @@ class RateLimiter:
         for k in [k for k, q in self._hits.items() if not q or now - q[-1] >= self.window]:
             del self._hits[k]
 
-    def reset(self):
+    def reset(self) -> None:
         with self._lock:
             self._hits.clear()

@@ -6,10 +6,13 @@ para que el bot recuerde clientes entre visitas y dispositivos en vez de
 depender solo de la cookie de sesión.
 """
 
+from __future__ import annotations
+
 import os
 import secrets
 import time
 from pathlib import Path
+from typing import Any
 
 import libsql
 
@@ -83,7 +86,7 @@ CATALOGO_SEED = [
 ]
 
 
-def get_connection():
+def get_connection() -> Any:
     if not TURSO_URL:
         return libsql.connect(LOCAL_DB_PATH)
     # Turso puede tardar en la primera conexión tras estar inactivo; un
@@ -99,7 +102,7 @@ def get_connection():
     raise last_error
 
 
-def init_db():
+def init_db() -> None:
     if not TURSO_URL and os.environ.get("RENDER"):
         # En Render el disco no es persistente: sin Turso, cada deploy o
         # reinicio del servicio borra clientes, carritos e historial.
@@ -130,7 +133,7 @@ def init_db():
 # ---- Clientes ---------------------------------------------------------
 
 
-def find_cliente_by_telefono(telefono):
+def find_cliente_by_telefono(telefono: str) -> dict[str, Any] | None:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -144,7 +147,7 @@ def find_cliente_by_telefono(telefono):
         conn.close()
 
 
-def find_cliente_by_id(cliente_id):
+def find_cliente_by_id(cliente_id: int | None) -> dict[str, Any] | None:
     if cliente_id is None:
         return None
     conn = get_connection()
@@ -160,7 +163,7 @@ def find_cliente_by_id(cliente_id):
         conn.close()
 
 
-def upsert_cliente(nombre, correo, usuario, telefono):
+def upsert_cliente(nombre: str, correo: str, usuario: str, telefono: str) -> int:
     """Crea el cliente o, si el teléfono ya existía, regresa el existente
     SIN modificar sus datos: el teléfono es la única credencial del bot, y
     quien lo teclea no ha demostrado ser su dueño, así que no puede
@@ -185,7 +188,9 @@ def upsert_cliente(nombre, correo, usuario, telefono):
         conn.close()
 
 
-def actualizar_cliente(cliente_id, nombre, correo, usuario, telefono):
+def actualizar_cliente(
+    cliente_id: int, nombre: str, correo: str, usuario: str, telefono: str
+) -> tuple[bool, str | None]:
     """Actualiza el perfil de un cliente YA IDENTIFICADO (distinto de
     upsert_cliente, que busca por teléfono y puede crear uno nuevo). Si el
     teléfono nuevo ya le pertenece a OTRO cliente, no se guarda nada —
@@ -215,7 +220,7 @@ def _row_to_cliente(row):
 # ---- Catálogo -----------------------------------------------------------
 
 
-def productos_por_servicio(servicio):
+def productos_por_servicio(servicio: str) -> list[dict[str, Any]]:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -237,7 +242,7 @@ def _row_to_producto(row):
 # ---- Carrito ------------------------------------------------------------
 
 
-def agregar_al_carrito(cliente_id, producto_id):
+def agregar_al_carrito(cliente_id: int, producto_id: int) -> None:
     conn = get_connection()
     try:
         conn.execute(
@@ -249,7 +254,7 @@ def agregar_al_carrito(cliente_id, producto_id):
         conn.close()
 
 
-def ver_carrito(cliente_id):
+def ver_carrito(cliente_id: int) -> list[dict[str, Any]]:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -268,7 +273,7 @@ def ver_carrito(cliente_id):
         conn.close()
 
 
-def quitar_del_carrito(cliente_id, item_id):
+def quitar_del_carrito(cliente_id: int, item_id: int) -> None:
     conn = get_connection()
     try:
         conn.execute(
@@ -280,7 +285,7 @@ def quitar_del_carrito(cliente_id, item_id):
         conn.close()
 
 
-def vaciar_carrito(cliente_id):
+def vaciar_carrito(cliente_id: int) -> None:
     conn = get_connection()
     try:
         conn.execute("DELETE FROM carrito_items WHERE cliente_id = ?", (cliente_id,))
@@ -292,7 +297,7 @@ def vaciar_carrito(cliente_id):
 # ---- Pedidos --------------------------------------------------------------
 
 
-def confirmar_pedido(cliente_id):
+def confirmar_pedido(cliente_id: int) -> dict[str, Any] | None:
     """Convierte el carrito actual en un pedido. Regresa None si el
     carrito estaba vacío (nada que confirmar).
 
@@ -347,7 +352,7 @@ def confirmar_pedido(cliente_id):
         conn.close()
 
 
-def pedido_por_token(token):
+def pedido_por_token(token: str) -> dict[str, Any] | None:
     """Para la página pública de recibo: el token (no el id secuencial)
     es lo que controla el acceso, para que no se puedan enumerar pedidos
     ajenos solo subiendo un número."""
@@ -378,7 +383,7 @@ def pedido_por_token(token):
         conn.close()
 
 
-def historial_pedidos(cliente_id, limit=10):
+def historial_pedidos(cliente_id: int, limit: int = 10) -> list[dict[str, Any]]:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -401,7 +406,7 @@ def historial_pedidos(cliente_id, limit=10):
         conn.close()
 
 
-def categorias_compradas(cliente_id):
+def categorias_compradas(cliente_id: int) -> set[str]:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -419,7 +424,7 @@ def categorias_compradas(cliente_id):
         conn.close()
 
 
-def sugerencia_producto(cliente_id):
+def sugerencia_producto(cliente_id: int) -> dict[str, Any] | None:
     """Sugiere un producto de una categoría que el cliente todavía no ha
     comprado, para el clásico "ya que te gustó X, prueba Y" post-compra."""
     compradas = categorias_compradas(cliente_id)
