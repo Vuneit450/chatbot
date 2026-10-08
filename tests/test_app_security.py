@@ -137,3 +137,12 @@ def test_ratelimiter_ventana_deslizante():
     assert rl.hit("b")
     t[0] = 11
     assert rl.hit("a")
+
+
+def test_nodos_dinamicos_tapan_al_arbol_estatico():
+    """respuestas.json no define estos nodos: los atiende commerce.py
+    (si alguien los vuelve a agregar al JSON, nunca se mostrarían)."""
+    import commerce
+    for nodo in ("carrito", "realizar_compra", "mi_cuenta", "identificarme"):
+        assert nodo not in chatbot.NODES
+        assert commerce.render(nodo, {"cliente_id": None, "data": {}}) is not None

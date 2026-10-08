@@ -215,20 +215,6 @@
       "3": {"icon": "confirmar", "titulo": "Confirmar compra"}
     }
   },
-  "realizar_compra": {
-    "texto": [
-      "🛒 Realizar compra:",
-      "Se está procesando tu compra. Por favor, confirma si deseas continuar con la transacción.",
-      "0️⃣ Volver al menú anterior",
-      "*️⃣ Volver al menú principal"
-    ],
-    "descripcion": "Confirmación de compra. Revisa tu pedido antes de confirmar la transacción.",
-    "categoria": "comprar",
-    "opciones": {
-      "0": "pedido",
-      "*": "menu_principal"
-    }
-  },
   "ayuda": {
     "texto": [
       "📘 Ayuda:",
