@@ -9,6 +9,7 @@ cuando no aplica (regresa None) se usa el árbol estático como respaldo.
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -38,6 +39,12 @@ SERVICIO_ICONS = {
     "Amazon Prime Video": "amazon_prime_video",
     "Netflix": "netflix",
 }
+
+
+def _es_indice(message, maximo):
+    """True si el mensaje es un número ASCII entre 1 y `maximo`. str.isdigit()
+    también acepta "²" o "①", y int() truena con ellos."""
+    return bool(re.fullmatch(r"[0-9]{1,6}", message)) and 1 <= int(message) <= maximo
 
 
 def _payload(node_id, lines, options, free_text=False):
@@ -345,7 +352,7 @@ def _advance_menu_principal(message):
 
 def _advance_categoria(node_id, servicio, message, cliente_id):
     productos = db.productos_por_servicio(servicio)
-    if message.isdigit() and 1 <= int(message) <= len(productos):
+    if _es_indice(message, len(productos)):
         producto = productos[int(message) - 1]
         if not cliente_id:
             return "carrito", {}  # dispara el mensaje "necesita cuenta"
@@ -363,7 +370,7 @@ def _advance_carrito(message, cliente_id):
     if message.lower() == "comprar":
         return "realizar_compra", {}
     items = db.ver_carrito(cliente_id)
-    if message.isdigit() and 1 <= int(message) <= len(items):
+    if _es_indice(message, len(items)):
         db.quitar_del_carrito(cliente_id, items[int(message) - 1]["item_id"])
     return "carrito", {}
 
