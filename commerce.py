@@ -80,6 +80,7 @@ def _necesita_cuenta(node_id):
 
 # ---- render ---------------------------------------------------------------
 
+
 def render(node_id, ctx):
     # Solo se pide el cliente a la base de datos cuando el nodo en
     # cuestión de verdad lo necesita: la mayoría de los nodos (todo el
@@ -102,7 +103,12 @@ def render(node_id, ctx):
     if node_id == "identificarme_no_encontrado":
         return _payload(
             node_id,
-            ["No encontramos ninguna cuenta con ese teléfono. 🤔", "1️⃣ Registrarme", "2️⃣ Intentar de nuevo", "0️⃣ Menú principal"],
+            [
+                "No encontramos ninguna cuenta con ese teléfono. 🤔",
+                "1️⃣ Registrarme",
+                "2️⃣ Intentar de nuevo",
+                "0️⃣ Menú principal",
+            ],
             [_tile("1", "Registrarme", "registro"), _tile("2", "Intentar de nuevo", "repetir"), _chip("0")],
         )
     if node_id == "mi_cuenta":
@@ -164,11 +170,14 @@ def _render_carrito(node_id, cliente):
         options = [_tile("1", "Ver catálogo", "productos"), _chip("0")]
         return _payload(node_id, lines, options)
     lines = ["🛒 Tu carrito:"]
-    lines += [f"{EMOJI_DIGITS[str(i)]} {it['servicio']} — {it['plan']} ({money(it['precio_mxn'])})" for i, it in enumerate(items, 1)]
+    lines += [
+        f"{EMOJI_DIGITS[str(i)]} {it['servicio']} — {it['plan']} ({money(it['precio_mxn'])})"
+        for i, it in enumerate(items, 1)
+    ]
     total = sum(it["precio_mxn"] for it in items)
     lines += [
         f"Total: {money(total)}",
-        "✅ Escribe \"comprar\" para confirmar tu pedido",
+        '✅ Escribe "comprar" para confirmar tu pedido',
         "❌ Toca el número de un producto para quitarlo del carrito",
         "0️⃣ Volver al menú principal",
     ]
@@ -176,8 +185,7 @@ def _render_carrito(node_id, cliente):
     # ya se vio en el catálogo), para reconocerlo de un vistazo en vez de
     # solo un número.
     options = [
-        _tile(str(i), it["servicio"], SERVICIO_ICONS.get(it["servicio"], "productos"))
-        for i, it in enumerate(items, 1)
+        _tile(str(i), it["servicio"], SERVICIO_ICONS.get(it["servicio"], "productos")) for i, it in enumerate(items, 1)
     ]
     options += [_tile("comprar", "Comprar", "confirmar"), _chip("0")]
     return _payload(node_id, lines, options)
@@ -261,26 +269,40 @@ def _advance_actualizar(message, cliente_id, data):
     if paso == "telefono":
         telefono = clean_phone(message)
         if len(telefono) != 10:
-            return "actualizar_informacion", {"data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": "formato"}}
+            return "actualizar_informacion", {
+                "data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": "formato"}
+            }
         nuevos["telefono"] = telefono
     else:
         if paso == "correo" and not valid_email(message):
-            return "actualizar_informacion", {"data": {"_actualizar_paso": "correo", "_actualizar_datos": nuevos, "_actualizar_error": "correo"}}
+            return "actualizar_informacion", {
+                "data": {"_actualizar_paso": "correo", "_actualizar_datos": nuevos, "_actualizar_error": "correo"}
+            }
         if paso == "usuario" and not valid_usuario(message):
-            return "actualizar_informacion", {"data": {"_actualizar_paso": "usuario", "_actualizar_datos": nuevos, "_actualizar_error": "usuario"}}
+            return "actualizar_informacion", {
+                "data": {"_actualizar_paso": "usuario", "_actualizar_datos": nuevos, "_actualizar_error": "usuario"}
+            }
         nuevos[paso] = message.strip()[:200]
 
     idx = ACTUALIZAR_PASOS.index(paso)
     if idx + 1 < len(ACTUALIZAR_PASOS):
         siguiente = ACTUALIZAR_PASOS[idx + 1]
-        return "actualizar_informacion", {"data": {"_actualizar_paso": siguiente, "_actualizar_datos": nuevos, "_actualizar_error": None}}
+        return "actualizar_informacion", {
+            "data": {"_actualizar_paso": siguiente, "_actualizar_datos": nuevos, "_actualizar_error": None}
+        }
 
-    ok, error = db.actualizar_cliente(cliente_id, nuevos["nombre"], nuevos["correo"], nuevos["usuario"], nuevos["telefono"])
+    ok, error = db.actualizar_cliente(
+        cliente_id, nuevos["nombre"], nuevos["correo"], nuevos["usuario"], nuevos["telefono"]
+    )
     if not ok:
         # El teléfono nuevo ya era de otro cliente: se pide de nuevo sin
         # perder lo ya capturado (nombre/correo/usuario).
-        return "actualizar_informacion", {"data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": error}}
-    return "actualizar_confirmacion", {"data": {"_actualizar_paso": None, "_actualizar_datos": {}, "_actualizar_error": None}}
+        return "actualizar_informacion", {
+            "data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": error}
+        }
+    return "actualizar_confirmacion", {
+        "data": {"_actualizar_paso": None, "_actualizar_datos": {}, "_actualizar_error": None}
+    }
 
 
 def _render_actualizar_confirmacion(cliente):
@@ -310,7 +332,10 @@ def _render_producto_agregado(data):
 
 def _render_pedido_confirmado(cliente, data):
     pedido = data.get("_ultimo_pedido") or {}
-    lines = [f"🎉 ¡Pedido #{pedido.get('pedido_id', '?')} confirmado! Total: {money(pedido.get('total_mxn', 0))}", "Te compartiremos los datos de acceso en breve."]
+    lines = [
+        f"🎉 ¡Pedido #{pedido.get('pedido_id', '?')} confirmado! Total: {money(pedido.get('total_mxn', 0))}",
+        "Te compartiremos los datos de acceso en breve.",
+    ]
     if pedido.get("token"):
         lines.append(f"🧾 Tu recibo: [verlo aquí]({'/recibo/' + pedido['token']})")
     sugerido = db.sugerencia_producto(cliente["id"]) if cliente else None
@@ -327,6 +352,7 @@ def _render_pedido_confirmado(cliente, data):
 
 
 # ---- advance ----------------------------------------------------------------
+
 
 def advance(node_id, message, ctx):
     cliente_id = ctx.get("cliente_id")

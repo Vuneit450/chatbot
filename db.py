@@ -129,6 +129,7 @@ def init_db():
 
 # ---- Clientes ---------------------------------------------------------
 
+
 def find_cliente_by_telefono(telefono):
     conn = get_connection()
     try:
@@ -213,6 +214,7 @@ def _row_to_cliente(row):
 
 # ---- Catálogo -----------------------------------------------------------
 
+
 def productos_por_servicio(servicio):
     conn = get_connection()
     try:
@@ -233,6 +235,7 @@ def _row_to_producto(row):
 
 
 # ---- Carrito ------------------------------------------------------------
+
 
 def agregar_al_carrito(cliente_id, producto_id):
     conn = get_connection()
@@ -260,10 +263,7 @@ def ver_carrito(cliente_id):
             """,
             (cliente_id,),
         )
-        return [
-            {"item_id": r[0], "servicio": r[1], "plan": r[2], "precio_mxn": r[3]}
-            for r in cur.fetchall()
-        ]
+        return [{"item_id": r[0], "servicio": r[1], "plan": r[2], "precio_mxn": r[3]} for r in cur.fetchall()]
     finally:
         conn.close()
 
@@ -290,6 +290,7 @@ def vaciar_carrito(cliente_id):
 
 
 # ---- Pedidos --------------------------------------------------------------
+
 
 def confirmar_pedido(cliente_id):
     """Convierte el carrito actual en un pedido. Regresa None si el
@@ -370,8 +371,7 @@ def pedido_por_token(token):
             (pedido["id"],),
         )
         pedido["items"] = [
-            {"servicio": r[0], "plan": r[1], "precio_mxn": r[2], "cantidad": r[3]}
-            for r in cur.fetchall()
+            {"servicio": r[0], "plan": r[1], "precio_mxn": r[2], "cantidad": r[3]} for r in cur.fetchall()
         ]
         return pedido
     finally:
@@ -434,9 +434,7 @@ def sugerencia_producto(cliente_id):
                 tuple(compradas),
             )
         else:
-            cur.execute(
-                "SELECT id, categoria, servicio, plan, precio_mxn FROM productos ORDER BY precio_mxn LIMIT 1"
-            )
+            cur.execute("SELECT id, categoria, servicio, plan, precio_mxn FROM productos ORDER BY precio_mxn LIMIT 1")
         return _row_to_producto(cur.fetchone())
     finally:
         conn.close()

@@ -77,10 +77,17 @@ def test_quitar_del_carrito_no_toca_carritos_ajenos():
 
 def test_orden_del_carrito_es_estable_con_la_misma_marca_de_tiempo():
     cid = _cliente()
-    ids = [_producto("Spotify", "1 perfil (1 mes)")["id"], _producto("Netflix", "1 perfil")["id"], _producto("Crunchyroll", "Cuenta compartida (1 mes)")["id"]]
+    ids = [
+        _producto("Spotify", "1 perfil (1 mes)")["id"],
+        _producto("Netflix", "1 perfil")["id"],
+        _producto("Crunchyroll", "Cuenta compartida (1 mes)")["id"],
+    ]
     conn = db.get_connection()
     for pid in ids:  # misma marca de tiempo exacta
-        conn.execute("INSERT INTO carrito_items (cliente_id, producto_id, agregado_en) VALUES (?, ?, '2026-01-01 00:00:00')", (cid, pid))
+        conn.execute(
+            "INSERT INTO carrito_items (cliente_id, producto_id, agregado_en) VALUES (?, ?, '2026-01-01 00:00:00')",
+            (cid, pid),
+        )
     conn.commit()
     conn.close()
     assert [i["item_id"] for i in db.ver_carrito(cid)] == sorted(i["item_id"] for i in db.ver_carrito(cid))
