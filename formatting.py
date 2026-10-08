@@ -23,3 +23,23 @@ def numbered_options(n, extra=()):
     options = [{"value": str(i), "label": EMOJI_DIGITS[str(i)]} for i in range(1, n + 1)]
     options += [{"value": v, "label": EMOJI_DIGITS.get(v, v)} for v in extra]
     return options
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s.]+$")
+
+
+def valid_email(raw):
+    value = (raw or "").strip()
+    return len(value) <= 120 and bool(_EMAIL_RE.match(value))
+
+
+def valid_usuario(raw):
+    """Usuario de 3 a 32 caracteres, sin espacios."""
+    value = (raw or "").strip()
+    return 3 <= len(value) <= 32 and not re.search(r"\s", value)
+
+
+CAMPO_AVISOS = {
+    "correo": "⚠️ Ese correo no parece válido. Escríbelo como nombre@dominio.com.",
+    "usuario": "⚠️ El usuario debe tener de 3 a 32 caracteres y sin espacios.",
+}

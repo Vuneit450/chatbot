@@ -1,4 +1,13 @@
+const fs = require('fs');
 const { defineConfig, devices } = require('@playwright/test');
+
+// Portable: PLAYWRIGHT_CHROMIUM_PATH / PYTHON sobreescriben; si no, se usa
+// el Chromium preinstalado de este entorno solo si existe (si no,
+// Playwright usa el que descarga `npx playwright install chromium`) y el
+// Python del .venv si existe (si no, python3 del PATH).
+const PRE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const chromium = process.env.PLAYWRIGHT_CHROMIUM_PATH || (fs.existsSync(PRE) ? PRE : undefined);
+const python = process.env.PYTHON || (fs.existsSync('.venv/bin/python') ? '.venv/bin/python' : 'python3');
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -8,14 +17,14 @@ module.exports = defineConfig({
     baseURL: 'http://127.0.0.1:5000',
     trace: 'retain-on-failure',
     launchOptions: {
-      executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+      executablePath: chromium,
     },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: '.venv/bin/python chatbot.py',
+    command: `${python} chatbot.py`,
     url: 'http://127.0.0.1:5000/',
     reuseExistingServer: !process.env.CI,
     timeout: 20000,

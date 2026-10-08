@@ -15,7 +15,15 @@ import urllib.error
 import urllib.request
 
 import db
-from formatting import EMOJI_DIGITS, clean_phone, money, numbered_options
+from formatting import (
+    CAMPO_AVISOS,
+    EMOJI_DIGITS,
+    clean_phone,
+    money,
+    numbered_options,
+    valid_email,
+    valid_usuario,
+)
 
 log = logging.getLogger(__name__)
 
@@ -231,6 +239,8 @@ def _render_actualizar(cliente, data):
         lines = ["⚠️ Ese número no parece válido. Escribe solo tus 10 dígitos, sin espacios ni guiones."]
     elif paso == "telefono" and error == "telefono_en_uso":
         lines = ["⚠️ Ese teléfono ya está en uso por otra cuenta. Escribe uno distinto:"]
+    elif paso in CAMPO_AVISOS and error == paso:
+        lines = [CAMPO_AVISOS[paso]]
     else:
         prompts = {
             "nombre": f"Vamos a actualizar tu información. Tu nombre actual es {cliente['nombre']}. Escribe el nuevo (o el mismo si no quieres cambiarlo):",
@@ -254,6 +264,10 @@ def _advance_actualizar(message, cliente_id, data):
             return "actualizar_informacion", {"data": {"_actualizar_paso": "telefono", "_actualizar_datos": nuevos, "_actualizar_error": "formato"}}
         nuevos["telefono"] = telefono
     else:
+        if paso == "correo" and not valid_email(message):
+            return "actualizar_informacion", {"data": {"_actualizar_paso": "correo", "_actualizar_datos": nuevos, "_actualizar_error": "correo"}}
+        if paso == "usuario" and not valid_usuario(message):
+            return "actualizar_informacion", {"data": {"_actualizar_paso": "usuario", "_actualizar_datos": nuevos, "_actualizar_error": "usuario"}}
         nuevos[paso] = message.strip()[:200]
 
     idx = ACTUALIZAR_PASOS.index(paso)
@@ -397,7 +411,7 @@ def _notificar_bolsillo(pedido, cliente):
     )
     try:
         urllib.request.urlopen(request, timeout=5)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - el aviso nunca debe romper el checkout
         # Cualquier falla de red (DNS, TLS, conexión rechazada, timeout,
         # respuesta 4xx/5xx de Bolsillo...) se ignora a propósito: el
         # pedido ya se confirmó y existe en la base de datos; este aviso

@@ -17,10 +17,10 @@ os.environ.pop("RENDER", None)
 os.environ["LOCAL_DB_PATH"] = str(Path(tempfile.mkdtemp(prefix="oreo-import-")) / "import.db")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pytest  # noqa: E402
+import pytest
 
-import chatbot  # noqa: E402
-import db  # noqa: E402
+import chatbot
+import db
 
 
 @pytest.fixture(autouse=True)

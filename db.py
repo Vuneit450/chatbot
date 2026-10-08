@@ -92,7 +92,7 @@ def get_connection():
     for attempt in range(2):
         try:
             return libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - reintento ante cualquier falla de conexión
             last_error = exc
             if attempt == 0:
                 time.sleep(1)
@@ -111,11 +111,10 @@ def init_db():
         # Migración ligera para bases ya desplegadas antes de que `token`
         # existiera en pedidos (CREATE TABLE IF NOT EXISTS no altera tablas
         # que ya existen).
-        try:
+        columnas = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
+        if "token" not in columnas:
             conn.execute("ALTER TABLE pedidos ADD COLUMN token TEXT")
             conn.commit()
-        except Exception:
-            pass  # la columna ya existe
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM productos")
         if cur.fetchone()[0] == 0:

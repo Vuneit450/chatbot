@@ -9,7 +9,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import commerce
 import db
-from formatting import EMOJI_DIGITS, clean_phone
+from formatting import (
+    CAMPO_AVISOS,
+    EMOJI_DIGITS,
+    clean_phone,
+    valid_email,
+    valid_usuario,
+)
 from ratelimit import RateLimiter
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -69,6 +75,9 @@ def node_payload(node_id, ctx):
     lines = format_lines(node["texto"], data)
     if node_id == "registro_usuario" and data.get("_telefono_invalido"):
         lines = ["⚠️ Ese número no parece válido. Escribe solo tus 10 dígitos, sin espacios ni guiones."] + lines
+    invalido = data.get("_campo_invalido")
+    if invalido in CAMPO_AVISOS and node.get("captura") == invalido:
+        lines = [CAMPO_AVISOS[invalido]] + lines
     return {
         "node": node_id,
         "lines": lines,
@@ -124,7 +133,11 @@ def advance(current_node, raw_message, ctx):
                 return current_node, {"data": {"_telefono_invalido": True}}
             captured = {"telefono": telefono, "_telefono_invalido": False}
         else:
+            valido = {"correo": valid_email, "usuario": valid_usuario}.get(capture_key)
+            if valido and not valido(message):
+                return current_node, {"data": {"_campo_invalido": capture_key}}
             captured = {capture_key: message[:MAX_INPUT_LEN]} if capture_key else {}
+            captured["_campo_invalido"] = None
         next_node = options["*"]
         if next_node == "registro_confirmacion":
             # Último paso del registro: ya tenemos los 4 campos, se crea
@@ -290,6 +303,11 @@ def api_message():
         data.update(updates.get("data", {}))
         session["node"] = next_node
         session["data"] = data
+        if next_node == "salir":
+            # "Salir" cierra la sesión del cliente: en un dispositivo
+            # compartido el siguiente usuario no debe heredar la cuenta.
+            session.pop("cliente_id", None)
+            session["data"] = {}
         if "cliente_id" in updates:
             session["cliente_id"] = updates["cliente_id"]
             session.permanent = True

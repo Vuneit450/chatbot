@@ -1,8 +1,9 @@
 """Autenticación/autorización, entradas hostiles, cabeceras y límites."""
 
+from conftest import registrar, say
+
 import chatbot
 import db
-from conftest import registrar, say
 
 
 def test_menu_publico_ofrece_identificarse(client):
@@ -171,3 +172,41 @@ def test_aviso_a_bolsillo_manda_el_total_real_y_no_rompe_el_checkout(client, mon
     assert enviados[0][0]["amount"] == 80
     assert "k-secreta" not in caplog.text
     assert db.historial_pedidos(1)[0]["total_mxn"] == 80
+
+
+def test_salir_cierra_la_sesion_del_cliente(client):
+    registrar(client)
+    say(client, "*")
+    _, p = say(client, "0")  # Salir
+    assert p["node"] == "salir"
+    with client.session_transaction() as s:
+        assert "cliente_id" not in s
+
+
+def test_registro_rechaza_correo_y_usuario_invalidos(client):
+    client.post("/api/start")
+    say(client, "1")
+    say(client, "Ana")
+    for malo in ("no-es-correo", "a@b", "a b@c.com", "a@@b.com"):
+        _, p = say(client, malo)
+        assert p["node"] == "registro_nombre" and "correo no parece válido" in p["lines"][0]
+    _, p = say(client, "ana@x.mx")
+    assert p["node"] == "registro_correo"
+    for malo in ("ab", "con espacio", "x" * 40):
+        _, p = say(client, malo)
+        assert p["node"] == "registro_correo" and "usuario debe tener" in p["lines"][0]
+    _, p = say(client, "ana_01")
+    assert p["node"] == "registro_usuario"
+
+
+def test_actualizar_informacion_valida_correo_y_usuario(client):
+    registrar(client)
+    say(client, "*")
+    for m in ("4", "3", "5", "2"):  # Inicio > Ayuda > Buscar info > Actualizar
+        say(client, m)
+    say(client, "Ana")
+    _, p = say(client, "malcorreo")
+    assert "correo no parece válido" in p["lines"][0]
+    say(client, "ana2@x.mx")
+    _, p = say(client, "a b")
+    assert "usuario debe tener" in p["lines"][0]
