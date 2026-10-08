@@ -8,6 +8,9 @@
 
   const STORAGE_KEY = 'oreo-transcript-v1';
   let busy = false;
+  // true cuando el nodo actual pide un PIN: lo tecleado no se muestra ni se
+  // guarda en el historial (sessionStorage), solo viaja al servidor.
+  let secretInput = false;
 
   function escapeHtml(str) {
     return str.replace(/[&<>"']/g, (ch) => ({
@@ -121,18 +124,27 @@
     inputEl.disabled = state;
   }
 
+  function setSecret(state) {
+    secretInput = !!state;
+    inputEl.type = secretInput ? 'password' : 'text';
+    inputEl.inputMode = secretInput ? 'numeric' : 'text';
+    inputEl.autocomplete = secretInput ? 'new-password' : 'off';
+  }
+
   function applyBotPayload(payload, transcript) {
     appendBubble('bot', payload.lines);
     renderQuickReplies(payload.options);
-    transcript.push({ role: 'bot', lines: payload.lines, options: payload.options });
+    setSecret(payload.secret);
+    transcript.push({ role: 'bot', lines: payload.lines, options: payload.options, secret: !!payload.secret });
     saveTranscript(transcript);
   }
 
   async function sendMessage(value, displayText) {
     if (busy || !value) return;
     const transcript = loadTranscript();
-    appendBubble('user', [displayText != null ? displayText : value]);
-    transcript.push({ role: 'user', lines: [displayText != null ? displayText : value] });
+    const shown = secretInput ? '••••' : (displayText != null ? displayText : value);
+    appendBubble('user', [shown]);
+    transcript.push({ role: 'user', lines: [shown] });
     saveTranscript(transcript);
     quickRepliesEl.innerHTML = '';
     inputEl.value = '';
@@ -183,6 +195,7 @@
       stored.forEach((entry) => {
         appendBubble(entry.role, entry.lines);
         if (entry.role === 'bot' && entry.options) renderQuickReplies(entry.options);
+        if (entry.role === 'bot') setSecret(entry.secret);
       });
       chatEl.scrollTop = chatEl.scrollHeight;
       return;

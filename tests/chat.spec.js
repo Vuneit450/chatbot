@@ -9,6 +9,9 @@ async function send(page, text) {
   await page.locator('.send-btn').click();
 }
 
+// PIN de prueba: el bot lo pide al registrarse y al identificarse.
+const PIN = '4821';
+
 function uniquePhone() {
   // Exactamente 10 dígitos (el registro ahora valida el formato), pero
   // igual único por ejecución para que reintentos y corridas repetidas de
@@ -19,12 +22,14 @@ function uniquePhone() {
   return `${ts}${rand}`;
 }
 
-async function registrarCliente(page, { nombre = 'Jonathan', correo = 'jonathan@binatsa.mx', usuario = 'jonab', telefono = uniquePhone() } = {}) {
+async function registrarCliente(page, { nombre = 'Jonathan', correo = 'jonathan@binatsa.mx', usuario = 'jonab', telefono = uniquePhone(), pin = PIN } = {}) {
   await clickOption(page, 'Registro');
   await send(page, nombre);
   await send(page, correo);
   await send(page, usuario);
   await send(page, telefono);
+  await send(page, pin); // elegir PIN
+  await send(page, pin); // confirmarlo
   return telefono;
 }
 
@@ -60,13 +65,18 @@ test.describe('Bot Oreo', () => {
     await expect(page.locator('.msg.bot').last()).toContainText('Genial, jonabinatsa');
     await expect(page.locator('.msg.bot').last()).toContainText('teléfono');
 
-    await page.fill('#messageInput', '5512345678');
+    const telefonoReg = uniquePhone();
+    await page.fill('#messageInput', telefonoReg);
     await page.locator('.send-btn').click();
+    await expect(page.locator('.msg.bot').last()).toContainText('PIN');
+    await send(page, PIN);
+    await expect(page.locator('.msg.bot').last()).toContainText('de nuevo tu PIN');
+    await send(page, PIN);
     const last = page.locator('.msg.bot').last();
     await expect(last).toContainText('Nombre: Jonathan');
     await expect(last).toContainText('Correo: jonathan@binatsa.mx');
     await expect(last).toContainText('Usuario: jonabinatsa');
-    await expect(last).toContainText('Teléfono: 5512345678');
+    await expect(last).toContainText(`Teléfono: ${telefonoReg}`);
     // Bug original: {telefono} nunca se llenaba porque no existía paso de
     // captura; si reaparece, el texto crudo del placeholder queda visible.
     await expect(last).not.toContainText('{telefono}');
@@ -87,6 +97,8 @@ test.describe('Bot Oreo', () => {
     const telefono = uniquePhone();
     const formateado = `${telefono.slice(0, 3)}-${telefono.slice(3, 6)}-${telefono.slice(6)}`;
     await send(page, formateado);
+    await send(page, PIN);
+    await send(page, PIN);
     const confirmacion = page.locator('.msg.bot').last();
     await expect(confirmacion).toContainText(`Teléfono: ${telefono}`);
   });
@@ -340,6 +352,7 @@ test.describe('Bot Oreo', () => {
     await pageB.goto('/');
     await clickOption(pageB, 'Ya tengo cuenta');
     await send(pageB, telefono);
+    await send(pageB, PIN);
     const menu = pageB.locator('.msg.bot').last();
     await expect(menu).toContainText('Erik');
     await expect(menu).toContainText('Mi carrito (1)');
@@ -376,7 +389,9 @@ test.describe('Bot Oreo', () => {
     await page.goto('/');
     await clickOption(page, 'Ya tengo cuenta');
     await send(page, '0000000000000');
-    await expect(page.locator('.msg.bot').last()).toContainText('No encontramos ninguna cuenta');
+    await send(page, PIN);
+    // Misma respuesta que con un PIN equivocado: no revela si el teléfono existe.
+    await expect(page.locator('.msg.bot').last()).toContainText('No pudimos identificarte');
   });
 
   async function irAActualizarInformacion(page) {
@@ -388,6 +403,8 @@ test.describe('Bot Oreo', () => {
     await clickOption(page, 'Ayuda');
     await clickOption(page, 'Buscar información');
     await clickOption(page, '2️⃣'); // Actualizar información
+    await send(page, PIN); // cambiar datos exige reconfirmar el PIN
+    await expect(page.locator('.msg.bot').last()).toContainText('nombre actual');
   }
 
   test('actualizar información cambia el perfil completo y sigue accesible ya identificado', async ({ page }) => {
@@ -467,7 +484,48 @@ test.describe('Bot Oreo', () => {
     await pageC.goto('/');
     await clickOption(pageC, 'Ya tengo cuenta');
     await send(pageC, telefonoA);
+    await send(pageC, PIN);
     await expect(pageC.locator('.msg.bot').last()).toContainText('Clienta A');
     await ctxC.close();
+  });
+
+  test('el PIN no se muestra ni se guarda en el historial del navegador', async ({ page }) => {
+    await page.goto('/');
+    await clickOption(page, 'Registro');
+    await send(page, 'Pina');
+    await send(page, 'pina@test.com');
+    await send(page, 'pinau');
+    await expect(page.locator('#messageInput')).toHaveAttribute('type', 'text');
+    await send(page, uniquePhone());
+    await expect(page.locator('.msg.bot').last()).toContainText('PIN');
+    await expect(page.locator('#messageInput')).toHaveAttribute('type', 'password');
+    await send(page, '739154');
+    await send(page, '739154');
+    await expect(page.locator('.msg.bot').last()).toContainText('Registro completado');
+    await expect(page.locator('.msg.user').last()).toHaveText('••••');
+    await expect(page.locator('body')).not.toContainText('739154');
+    const guardado = await page.evaluate(() => JSON.stringify(Object.assign({}, sessionStorage)));
+    expect(guardado).not.toContain('739154');
+    await page.reload();
+    await expect(page.locator('body')).not.toContainText('739154');
+    await expect(page.locator('#messageInput')).toHaveAttribute('type', 'text');
+  });
+
+  test('un PIN incorrecto no identifica y la respuesta es la genérica', async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    await pageA.goto('/');
+    const telefono = await registrarCliente(pageA, { nombre: 'Pili' });
+    await ctxA.close();
+
+    const ctxB = await browser.newContext();
+    const pageB = await ctxB.newPage();
+    await pageB.goto('/');
+    await clickOption(pageB, 'Ya tengo cuenta');
+    await send(pageB, telefono);
+    await send(pageB, '0000');
+    await expect(pageB.locator('.msg.bot').last()).toContainText('No pudimos identificarte');
+    await expect(pageB.locator('.msg.bot').last()).not.toContainText('Pili');
+    await ctxB.close();
   });
 });
