@@ -22,6 +22,14 @@ Pruebas unitarias/integración (pytest, base SQLite temporal):
   pip install -r requirements-dev.txt
   python -m pytest
 
+Lint y formato (ruff, configurado en pyproject.toml):
+  pip install ruff
+  ruff check .          # lint
+  ruff format --check . # formato (ruff format . para aplicarlo)
+
+CI: .github/workflows/ci.yml corre ruff, pytest y Playwright en cada push/PR.
+Solo prueba; no despliega (Render despliega por su cuenta).
+
 Límites por IP (variables opcionales): RATE_LIMIT_MESSAGES (120/min) y
 RATE_LIMIT_AUTH (10 intentos de identificación / 10 min).
 

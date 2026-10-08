@@ -1,0 +1,44 @@
+# Solo integración continua: corre pruebas y lint. No despliega nada
+# (el despliegue lo gestiona Render por su cuenta).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Dependencias Python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt -r requirements-dev.txt ruff
+      - name: Lint (ruff)
+        run: |
+          .venv/bin/ruff check .
+          .venv/bin/ruff format --check .
+      - name: Pruebas (pytest)
+        run: .venv/bin/python -m pytest -q
+      - name: Dependencias Node y navegador
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Pruebas end-to-end (Playwright)
+        run: npm test
