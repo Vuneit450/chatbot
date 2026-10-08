@@ -26,6 +26,10 @@ module.exports = defineConfig({
       // commerce._notificar_bolsillo).
       BOLSILLO_SYNC_URL: 'http://127.0.0.1:1/api/income',
       BOLSILLO_SYNC_KEY: 'llave-de-prueba',
+      // La suite manda todo desde 127.0.0.1: sin esto toparía con los
+      // límites por IP pensados para producción.
+      RATE_LIMIT_MESSAGES: '100000',
+      RATE_LIMIT_AUTH: '100000',
     },
   },
 });

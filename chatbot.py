@@ -5,10 +5,12 @@ from datetime import timedelta
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, render_template, request, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import commerce
 import db
 from formatting import EMOJI_DIGITS, clean_phone
+from ratelimit import RateLimiter
 
 BASE_DIR = Path(__file__).resolve().parent
 START_NODE = "menu_principal"
@@ -141,10 +143,58 @@ def advance(current_node, raw_message, ctx):
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+IS_PRODUCTION = bool(os.environ.get("RENDER"))
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    # Sin SECRET_KEY fija, cada reinicio (o cada worker) firmaría con una
+    # llave distinta e invalidaría todas las sesiones/identificaciones.
+    app.secret_key = secrets.token_hex(32)
+    if IS_PRODUCTION:
+        print("ADVERTENCIA: SECRET_KEY no está definida; las sesiones se perderán en cada reinicio.")
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)
+# La cookie de sesión es la única "credencial" una vez identificado el
+# cliente: se limita a 30 días, solo HTTPS en producción, no legible por JS
+# y no se envía en POST de otros sitios (mitiga CSRF).
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+if IS_PRODUCTION or os.environ.get("TRUST_PROXY") == "1":
+    # Detrás del proxy de Render, remote_addr sería el del proxy: sin esto
+    # todos los usuarios compartirían un mismo contador de límite.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 db.init_db()
+
+# Límites por IP. Los valores se pueden subir por entorno (la suite
+# Playwright manda todo desde 127.0.0.1).
+message_limiter = RateLimiter(int(os.environ.get("RATE_LIMIT_MESSAGES", "120")), 60)
+# Nodos donde un teléfono funciona como contraseña (identificarse o
+# registrarse con un teléfono existente): frena probar números al azar.
+auth_limiter = RateLimiter(int(os.environ.get("RATE_LIMIT_AUTH", "10")), 600)
+AUTH_NODES = ("identificarme", "registro_usuario")
+
+
+def reset_rate_limits():
+    message_limiter.reset()
+    auth_limiter.reset()
+
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    resp.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'none'",
+    )
+    if request.path.startswith(("/api/", "/recibo/")):
+        resp.headers["Cache-Control"] = "no-store"
+    if request.path.startswith("/recibo/"):
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return resp
 
 
 def _ctx():
@@ -212,14 +262,28 @@ def api_state():
 
 @app.route("/api/message", methods=["POST"])
 def api_message():
-    body = request.get_json(silent=True) or {}
-    message = str(body.get("message", ""))
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = {}
+    # Tope de longitud también aquí (no solo al capturar): ningún nodo
+    # necesita más, y evita procesar/guardar basura de hasta 64KB.
+    message = str(body.get("message", ""))[:MAX_INPUT_LEN]
     _ensure_conversation()
 
     if not message.strip():
         return jsonify(node_payload(session["node"], _ctx()))
 
     current_node = session["node"]
+    limited = None
+    if not message_limiter.hit(request.remote_addr):
+        limited = "⏳ Estás enviando mensajes muy rápido. Espera un momento e intenta de nuevo."
+    elif current_node in AUTH_NODES and not auth_limiter.hit(request.remote_addr):
+        limited = "🔒 Demasiados intentos de identificación. Espera unos minutos e intenta de nuevo."
+    if limited:
+        payload = node_payload(current_node, _ctx())
+        payload["lines"] = [limited] + payload["lines"]
+        return jsonify(payload), 429
+
     try:
         next_node, updates = advance(current_node, message, _ctx())
         data = dict(session.get("data", {}))
