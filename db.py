@@ -161,8 +161,11 @@ def find_cliente_by_id(cliente_id):
 
 
 def upsert_cliente(nombre, correo, usuario, telefono):
-    """Crea el cliente o, si el teléfono ya existía, actualiza sus datos
-    (por si alguien vuelve a registrarse con el mismo teléfono)."""
+    """Crea el cliente o, si el teléfono ya existía, regresa el existente
+    SIN modificar sus datos: el teléfono es la única credencial del bot, y
+    quien lo teclea no ha demostrado ser su dueño, así que no puede
+    reescribirle nombre/correo/usuario (para eso está "Actualizar
+    información", que exige estar ya identificado)."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -170,10 +173,6 @@ def upsert_cliente(nombre, correo, usuario, telefono):
         existing = cur.fetchone()
         if existing:
             cliente_id = existing[0]
-            conn.execute(
-                "UPDATE clientes SET nombre = ?, correo = ?, usuario = ? WHERE id = ?",
-                (nombre, correo, usuario, cliente_id),
-            )
         else:
             conn.execute(
                 "INSERT INTO clientes (nombre, correo, usuario, telefono) VALUES (?, ?, ?, ?)",
@@ -258,7 +257,7 @@ def ver_carrito(cliente_id):
             FROM carrito_items ci
             JOIN productos p ON p.id = ci.producto_id
             WHERE ci.cliente_id = ?
-            ORDER BY ci.agregado_en
+            ORDER BY ci.agregado_en, ci.id
             """,
             (cliente_id,),
         )
@@ -295,32 +294,55 @@ def vaciar_carrito(cliente_id):
 
 def confirmar_pedido(cliente_id):
     """Convierte el carrito actual en un pedido. Regresa None si el
-    carrito estaba vacío (nada que confirmar)."""
-    items = ver_carrito(cliente_id)
-    if not items:
-        return None
-    total = sum(i["precio_mxn"] for i in items)
+    carrito estaba vacío (nada que confirmar).
+
+    Todo ocurre en una sola transacción y se verifica que el carrito leído
+    sea el que de verdad se vació: si otra petición (doble clic, dos
+    pestañas) ya lo confirmó, se revierte en vez de dejar un pedido con
+    total pero sin productos."""
     token = secrets.token_urlsafe(16)
     conn = get_connection()
     try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT ci.id, p.servicio, p.plan, p.precio_mxn
+            FROM carrito_items ci
+            JOIN productos p ON p.id = ci.producto_id
+            WHERE ci.cliente_id = ?
+            ORDER BY ci.agregado_en, ci.id
+            """,
+            (cliente_id,),
+        )
+        items = [{"item_id": r[0], "servicio": r[1], "plan": r[2], "precio_mxn": r[3]} for r in cur.fetchall()]
+        if not items:
+            return None
+        total = sum(i["precio_mxn"] for i in items)
         conn.execute(
             "INSERT INTO pedidos (cliente_id, total_mxn, token) VALUES (?, ?, ?)",
             (cliente_id, total, token),
         )
         pedido_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        copiados = 0
         for item in items:
-            conn.execute(
+            copiados += conn.execute(
                 """
                 INSERT INTO pedido_items (pedido_id, producto_id, servicio, plan, precio_mxn, cantidad)
                 SELECT ?, ci.producto_id, p.servicio, p.plan, p.precio_mxn, ci.cantidad
                 FROM carrito_items ci JOIN productos p ON p.id = ci.producto_id
-                WHERE ci.id = ?
+                WHERE ci.id = ? AND ci.cliente_id = ?
                 """,
-                (pedido_id, item["item_id"]),
-            )
-        conn.execute("DELETE FROM carrito_items WHERE cliente_id = ?", (cliente_id,))
+                (pedido_id, item["item_id"], cliente_id),
+            ).rowcount
+        borrados = conn.execute("DELETE FROM carrito_items WHERE cliente_id = ?", (cliente_id,)).rowcount
+        if copiados != len(items) or borrados != len(items):
+            conn.rollback()
+            return None
         conn.commit()
         return {"pedido_id": pedido_id, "items": items, "total_mxn": total, "token": token}
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -362,7 +384,7 @@ def historial_pedidos(cliente_id, limit=10):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, total_mxn, creado_en FROM pedidos WHERE cliente_id = ? ORDER BY creado_en DESC LIMIT ?",
+            "SELECT id, total_mxn, creado_en FROM pedidos WHERE cliente_id = ? ORDER BY creado_en DESC, id DESC LIMIT ?",
             (cliente_id, limit),
         )
         pedidos = [{"id": r[0], "total_mxn": r[1], "creado_en": r[2]} for r in cur.fetchall()]
